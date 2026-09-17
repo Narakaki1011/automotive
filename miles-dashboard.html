@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Household Vehicle Economics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0E0E10; --panel:#17181A; --panel-2:#1D1E20; --line:#2A2A2C;
+    --ink:#EDEAE4; --ink-dim:#9A9793;
+    --brass:#C6303A; --jeep:#C6303A; --truck:#80868D; --neutral:#4A4A4D;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'Work Sans',sans-serif;line-height:1.55;}
+  h1,h2,h3,.display{font-family:'Zilla Slab',serif;}
+  .odo{font-family:'IBM Plex Mono',monospace;}
+  a{color:var(--brass);}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
+
+  /* NAV */
+  .topnav{
+    position:sticky;top:0;z-index:20;
+    background:rgba(14,14,16,0.95);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .topnav .inner{
+    max-width:960px;margin:0 auto;padding:0 24px;
+    display:flex;align-items:center;gap:4px;height:56px;
+  }
+  .topnav .brand{
+    font-family:'Zilla Slab',serif;font-weight:600;font-size:1.05rem;
+    margin-right:auto;color:var(--ink);
+  }
+  .topnav button{
+    background:none;border:none;color:var(--ink-dim);
+    font-family:'Work Sans',sans-serif;font-size:0.92rem;
+    padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;
+    transition:color .15s, border-color .15s;
+  }
+  .topnav button:hover{color:var(--ink);}
+  .topnav button.active{color:var(--brass);border-bottom-color:var(--brass);}
+  .loadBtn{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);
+    font-size:0.8rem;padding:7px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;
+  }
+  .loadBtn:hover{color:var(--ink);border-color:var(--brass);}
+  .bottom-load{text-align:center;margin:28px 0 8px;}
+
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .hero{
+    position:relative;
+    padding:104px 0 40px;
+    overflow:hidden;
+  }
+  .hero-bg{position:absolute;inset:0;z-index:0;}
+  .hero-bg .layer{position:absolute;top:0;bottom:0;background-repeat:no-repeat;background-size:cover;}
+  .hero-bg .layer.texture{left:0;right:0;background-image:url('hero-a.jpg');background-position:center 22%;opacity:0.26;}
+  .hero-bg .layer.jeep{
+    left:0;width:62%;background-image:url('hero-b.jpg');background-position:right 30%;
+    -webkit-mask-image:linear-gradient(to right,#000 0%,#000 52%,transparent 100%);
+    mask-image:linear-gradient(to right,#000 0%,#000 52%,transparent 100%);
+  }
+  .hero-bg .layer.truck{
+    right:0;width:62%;background-image:url('hero-r1.jpg');background-position:left 38%;
+    -webkit-mask-image:linear-gradient(to left,#000 0%,#000 52%,transparent 100%);
+    mask-image:linear-gradient(to left,#000 0%,#000 52%,transparent 100%);
+  }
+  .hero-bg::before{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(100deg, rgba(14,14,16,0.94) 0%, rgba(14,14,16,0.72) 34%, rgba(14,14,16,0.18) 62%, rgba(14,14,16,0.55) 100%);
+  }
+  .hero-bg::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(to bottom, transparent 0%, transparent 42%, var(--bg) 100%);
+  }
+  .hero .wrap{position:relative;z-index:1;}
+  .hero .tag{color:var(--brass);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.14em;margin:0 0 16px;}
+  .hero h1{font-size:2.3rem;font-weight:600;line-height:1.15;margin:0 0 16px;max-width:640px;}
+  .hero p{color:var(--ink-dim);max-width:560px;font-size:1.02rem;margin:0;}
+
+  .stat-bar{background:var(--panel);padding:36px 0;}
+  .hero-stats{display:flex;flex-wrap:wrap;gap:56px;}
+  .hero-stat{cursor:pointer;}
+  .hero-stat .n{font-family:'IBM Plex Mono',monospace;font-size:1.7rem;color:var(--ink);display:block;transition:color .15s;}
+  .hero-stat:hover .n{color:var(--brass);}
+  .hero-stat .l{color:var(--ink-dim);font-size:0.72rem;margin-top:6px;max-width:200px;text-transform:uppercase;letter-spacing:0.08em;}
+
+  section{padding:48px 0;}
+  section h2{font-size:1.5rem;font-weight:600;margin:0 0 8px;}
+  section .lede{color:var(--ink-dim);max-width:600px;margin:0 0 28px;font-size:0.96rem;}
+
+  .fleet{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:720px){.fleet{grid-template-columns:1fr;}}
+  .car{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--jeep);padding:20px 22px;}
+  .car.truck{border-top-color:var(--truck);}
+  .car h3{margin:0 0 2px;font-size:1.15rem;}
+  .car .who{color:var(--ink-dim);font-size:0.82rem;margin-bottom:14px;}
+  .car .row{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line);font-size:0.9rem;}
+  .car .row:first-of-type{border-top:none;}
+  .car .row .v{font-family:'IBM Plex Mono',monospace;color:var(--ink);}
+
+  .chart-box{background:var(--panel);border:1px solid var(--line);padding:20px 20px 8px;}
+  .chart-box canvas{max-height:320px;}
+  .chart-note{color:var(--ink-dim);font-size:0.84rem;margin-top:10px;}
+  .assumptions-list{color:var(--ink-dim);font-size:0.84rem;line-height:1.55;margin:10px 0 0;padding-left:20px;}
+  .assumptions-list li{margin-bottom:6px;}
+  .assumptions-list li::marker{color:var(--brass);}
+
+  .insight{background:var(--panel-2);border-left:3px solid var(--brass);padding:15px 20px;margin:18px 0;font-size:0.94rem;}
+  .insight strong{color:var(--brass);}
+  .insight.warn{border-left-color:var(--brass);} .insight.warn strong{color:var(--brass);}
+  .insight.good{border-left-color:var(--truck);} .insight.good strong{color:var(--truck);}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:720px){.two-col{grid-template-columns:1fr;}}
+
+  table.data{width:100%;border-collapse:collapse;font-size:0.88rem;}
+  table.data th,table.data td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;}
+  table.data th{color:var(--ink-dim);font-weight:500;font-size:0.78rem;}
+  table.data td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  table.data th.num{text-align:right;}
+
+  .year-tiles{display:flex;gap:10px;flex-wrap:wrap;}
+  .year-tile{background:var(--panel-2);border:1px solid var(--line);border-top:3px solid var(--brass);padding:10px 16px;flex:1;min-width:88px;text-align:center;}
+  .year-tile .yr{font-size:0.76rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+  .year-tile .amt{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;color:var(--brass);}
+
+  .lab-panel{background:var(--panel);border:1px solid var(--line);padding:22px 22px 6px;}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:18px;}
+  @media (max-width:720px){.controls{grid-template-columns:1fr;}}
+  .tco-controls{grid-template-columns:1fr 1fr 1fr;}
+  @media (max-width:900px){.tco-controls{grid-template-columns:1fr 1fr;}}
+  @media (max-width:520px){.tco-controls{grid-template-columns:1fr;}}
+  .control label{display:flex;justify-content:space-between;font-size:0.86rem;color:var(--ink-dim);margin-bottom:6px;}
+  .control label .val{font-family:'IBM Plex Mono',monospace;color:var(--brass);}
+  .control input[type=range]{width:100%;-webkit-appearance:none;height:4px;background:var(--line);border-radius:2px;outline:none;}
+  .control input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--brass);cursor:pointer;}
+  .control input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--brass);cursor:pointer;border:none;}
+  .control input[type=number]{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);
+    padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:0.95rem;border-radius:3px;
+  }
+  .control select{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);
+    padding:8px 10px;font-family:'Work Sans',sans-serif;font-size:0.9rem;border-radius:3px;
+  }
+
+  .verdict{display:flex;gap:14px;align-items:baseline;background:var(--panel-2);padding:16px 18px;margin:14px 0;}
+  .verdict .big{font-family:'IBM Plex Mono',monospace;font-size:1.5rem;color:var(--brass);}
+  .verdict .txt{color:var(--ink-dim);font-size:0.9rem;}
+
+  .cc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:6px 0 18px;}
+  @media (max-width:820px){.cc-grid{grid-template-columns:1fr;}}
+  .cc-card{background:var(--panel-2);border:1px solid var(--line);border-top:3px solid var(--neutral);padding:16px 18px;}
+  .cc-card.good{border-top-color:var(--truck);}
+  .cc-card.warn{border-top-color:var(--brass);}
+  .cc-card .lbl{color:var(--ink-dim);font-size:0.76rem;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;}
+  .cc-card .cur{font-size:0.84rem;color:var(--ink-dim);margin-bottom:6px;}
+  .cc-card .need{font-family:'IBM Plex Mono',monospace;font-size:1.2rem;display:block;margin-bottom:8px;}
+  .cc-card .need.good{color:var(--truck);}
+  .cc-card .need.warn{color:var(--brass);}
+  .cc-card .sub{color:var(--ink-dim);font-size:0.8rem;line-height:1.4;}
+
+  .recs{list-style:none;margin:0;padding:0;}
+  .recs li{display:grid;grid-template-columns:26px 1fr;gap:14px;padding:14px 0;border-top:1px solid var(--line);}
+  .recs li:first-child{border-top:none;}
+  .recs .n{font-family:'IBM Plex Mono',monospace;color:var(--brass);font-size:0.92rem;}
+  .recs .t{font-weight:600;margin-bottom:3px;}
+  .recs .d{color:var(--ink-dim);font-size:0.9rem;}
+
+  .pillrow{display:flex;gap:10px;margin-bottom:18px;}
+  .pill{
+    padding:6px 14px;border:1px solid var(--line);border-radius:20px;font-size:0.85rem;
+    color:var(--ink-dim);cursor:pointer;background:var(--panel);
+  }
+  .pill.active{border-color:var(--brass);color:var(--brass);}
+
+  /* Photo breaks: full-bleed vehicle shots between sections so the page isn't just
+     black-with-red past the first scroll. */
+  .photo-break{
+    position:relative;height:260px;margin:0;overflow:hidden;
+    background-size:cover;background-position:center;background-color:var(--panel);
+  }
+  .photo-break::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(to bottom, rgba(14,14,16,0.05) 0%, rgba(14,14,16,0.35) 55%, rgba(14,14,16,0.92) 100%);
+  }
+  .photo-break .cap{
+    position:absolute;left:0;right:0;bottom:0;z-index:1;
+    max-width:960px;margin:0 auto;padding:0 24px 16px;
+  }
+  .photo-break .cap .t{font-family:'Zilla Slab',serif;font-size:1.15rem;color:var(--ink);}
+  .photo-break .cap .s{font-family:'Work Sans',sans-serif;font-size:0.82rem;color:var(--ink-dim);margin-top:2px;}
+
+  /* File loader */
+  .loader-banner{background:var(--panel-2);border:1px dashed var(--line);padding:16px 20px;margin:0 0 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .loader-banner .txt{font-size:0.86rem;color:var(--ink-dim);}
+  .loader-banner .txt strong{color:var(--ink);}
+  .loader-banner button{
+    background:var(--brass);border:none;color:#fff;font-family:'Work Sans',sans-serif;
+    font-size:0.85rem;padding:9px 16px;border-radius:6px;cursor:pointer;white-space:nowrap;
+  }
+  .loader-banner button:hover{opacity:0.88;}
+  .loader-status{font-size:0.82rem;margin-top:8px;}
+  .loader-status.err{color:var(--brass);}
+  .loader-status.ok{color:var(--truck);}
+
+  footer{padding:26px 0 60px;color:var(--ink-dim);font-size:0.8rem;}
+
+  /* ============================================================
+     MODERN FRONT-END LAYER
+     Keeps the existing data/logic intact while giving the landing
+     experience a darker, cinematic automotive treatment.
+     ============================================================ */
+  :root{
+    --bg:#070809;
+    --panel:#101214;
+    --panel-2:#15181b;
+    --line:rgba(255,255,255,.09);
+    --ink:#f4f4f2;
+    --ink-dim:#8f949a;
+    --brass:#ff4b3e;
+    --jeep:#ff4b3e;
+    --truck:#c8cdd2;
+    --glow:rgba(255,75,62,.22);
+  }
+  html{scroll-behavior:smooth;}
+  body{
+    background:
+      radial-gradient(circle at 78% -10%, rgba(255,75,62,.10), transparent 30rem),
+      radial-gradient(circle at 12% 20%, rgba(255,255,255,.035), transparent 26rem),
+      var(--bg);
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:999;
+    background:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px);
+    background-size:100% 4px;opacity:.10;mix-blend-mode:overlay;
+  }
+  .wrap{max-width:1180px;padding:0 28px;}
+  .topnav{
+    background:rgba(7,8,9,.72);
+    border-bottom:1px solid rgba(255,255,255,.07);
+    backdrop-filter:blur(22px) saturate(140%);
+    -webkit-backdrop-filter:blur(22px) saturate(140%);
+    transition:background .35s ease, box-shadow .35s ease;
+  }
+  .topnav .inner{max-width:1180px;height:72px;padding:0 28px;gap:6px;}
+  .brandmark{
+    display:flex;align-items:center;gap:9px;margin-right:auto;
+    color:#fff;font-family:'IBM Plex Mono',monospace;font-size:.78rem;
+    font-weight:600;letter-spacing:.18em;
+  }
+  .brand-dot{
+    width:8px;height:8px;border-radius:50%;background:var(--brass);
+    box-shadow:0 0 18px var(--brass);animation:brandPulse 2.5s ease-in-out infinite;
+  }
+  .topnav button{
+    position:relative;padding:10px 14px;border:0;color:#8d9298;
+    transition:color .25s ease, transform .25s ease;
+  }
+  .topnav button::after{
+    content:"";position:absolute;left:14px;right:14px;bottom:0;height:2px;
+    background:var(--brass);transform:scaleX(0);transform-origin:center;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 0 14px var(--glow);
+  }
+  .topnav button:hover{color:#fff;transform:translateY(-1px);}
+  .topnav button.active{color:#fff;border-bottom-color:transparent;}
+  .topnav button.active::after{transform:scaleX(1);}
+  .loadBtn{border-radius:999px;background:rgba(255,255,255,.04);transition:.25s ease;}
+  .loadBtn:hover{background:rgba(255,75,62,.10);box-shadow:0 0 22px var(--glow);}
+
+  .page{animation:pageIn .55s cubic-bezier(.2,.75,.2,1);}
+  .hero{
+    min-height:650px;padding:122px 0 56px;
+    display:flex;align-items:flex-end;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .hero-bg .layer.texture{opacity:.12;filter:contrast(1.08) saturate(.7);}
+  .hero-bg .layer.jeep,.hero-bg .layer.truck{opacity:.82;filter:contrast(1.05) saturate(.82);}
+  .hero-bg::before{
+    background:
+      linear-gradient(90deg,rgba(7,8,9,.98) 0%,rgba(7,8,9,.76) 35%,rgba(7,8,9,.18) 66%,rgba(7,8,9,.78) 100%),
+      linear-gradient(0deg,rgba(7,8,9,.96) 0%,transparent 55%);
+  }
+  .hero-bg::after{
+    background:linear-gradient(to bottom,transparent 30%,var(--bg) 100%);
+  }
+  .hero .tag{
+    display:flex;align-items:center;gap:9px;color:#aeb2b7;
+    font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.16em;
+    margin-bottom:20px;
+  }
+  .pulse{width:6px;height:6px;border-radius:50%;background:var(--brass);box-shadow:0 0 12px var(--brass);}
+  .hero h1{
+    font-family:'Work Sans',sans-serif;font-size:clamp(3.2rem,6.5vw,6.2rem);
+    font-weight:500;letter-spacing:-.055em;line-height:.94;
+    max-width:900px;margin:0 0 24px;
+  }
+  .hero-accent{
+    background:linear-gradient(100deg,#fff 15%,#ff6459 90%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero-copy{max-width:560px;color:#a3a7ac!important;font-size:1.02rem!important;line-height:1.7;}
+  .vehicle-showcase{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;
+    max-width:820px;margin-top:42px;
+  }
+  .vehicle-card{
+    position:relative;height:178px;overflow:hidden;border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;background:#111;isolation:isolate;cursor:pointer;
+    box-shadow:0 18px 50px rgba(0,0,0,.32);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1),border-color .35s ease,box-shadow .5s ease;
+  }
+  .vehicle-card:hover{
+    transform:translateY(-7px) scale(1.012);
+    border-color:rgba(255,75,62,.48);
+    box-shadow:0 26px 70px rgba(0,0,0,.55),0 0 34px rgba(255,75,62,.10);
+  }
+  .vehicle-image{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .8s cubic-bezier(.2,.8,.2,1),filter .5s ease;}
+  .jeep-card .vehicle-image{background-image:url('hero-jeep.jpg');background-position:center 58%;}
+  .raptor-card .vehicle-image{background-image:url('hero-r1.jpg');background-position:center 45%;}
+  .vehicle-card:hover .vehicle-image{transform:scale(1.065);filter:saturate(1.08) contrast(1.06);}
+  .vehicle-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.88),rgba(0,0,0,.18) 72%),linear-gradient(0deg,rgba(0,0,0,.62),transparent 60%);z-index:1;}
+  .vehicle-content{position:absolute;left:20px;bottom:18px;z-index:2;}
+  .vehicle-kicker{display:block;color:#b8bcc0;font:600 .61rem 'IBM Plex Mono',monospace;letter-spacing:.15em;margin-bottom:6px;}
+  .vehicle-card h3{font:500 1.65rem 'Work Sans',sans-serif;letter-spacing:-.035em;margin:0 0 4px;}
+  .vehicle-meta{color:#a0a5aa;font-size:.72rem;}
+  .vehicle-arrow{position:absolute;right:17px;top:16px;z-index:2;width:31px;height:31px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.13);font-size:1rem;transition:.35s ease;}
+  .vehicle-card:hover .vehicle-arrow{background:var(--brass);border-color:var(--brass);transform:rotate(45deg);}
+  .stat-bar{
+    position:relative;background:rgba(16,18,20,.82);border-top:1px solid rgba(255,255,255,.04);
+    border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(18px);
+  }
+  .hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+  .hero-stat{padding:28px 28px 30px 0;transition:transform .3s ease;}
+  .hero-stat:hover{transform:translateY(-3px);}
+  .hero-stat .n{font-size:1.8rem;font-weight:500;}
+  .hero-stat .l{color:#7f858b;line-height:1.45;}
+  section{padding:76px 0;}
+  section h2{font-family:'Work Sans',sans-serif;font-size:1.7rem;letter-spacing:-.035em;}
+  section .lede{color:#858b91;line-height:1.7;}
+  .car,.chart-box,.lab-panel,.cc-card,.insight,.verdict,.year-tile{
+    border-color:rgba(255,255,255,.075);
+    box-shadow:0 12px 40px rgba(0,0,0,.16);
+  }
+  .car,.chart-box,.lab-panel{border-radius:16px;}
+  .car{transition:transform .35s ease,border-color .35s ease,box-shadow .35s ease;}
+  .car:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.14);box-shadow:0 20px 55px rgba(0,0,0,.25);}
+  .chart-box{background:rgba(16,18,20,.78);backdrop-filter:blur(12px);}
+  .cc-card{border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.018));}
+  .insight{border-radius:0 12px 12px 0;background:rgba(255,255,255,.035);}
+  .photo-break{height:380px;background-attachment:fixed;filter:saturate(.82);}
+  .photo-break::after{background:linear-gradient(to bottom,rgba(7,8,9,.04),rgba(7,8,9,.25) 45%,rgba(7,8,9,.98));}
+  table.data th,table.data td{border-bottom-color:rgba(255,255,255,.065);}
+  .control input[type=range]{height:3px;background:#303438;}
+  .control input[type=range]::-webkit-slider-thumb{width:17px;height:17px;box-shadow:0 0 0 5px rgba(255,75,62,.09),0 0 18px rgba(255,75,62,.3);}
+  .control input[type=range]::-moz-range-thumb{width:17px;height:17px;box-shadow:0 0 0 5px rgba(255,75,62,.09),0 0 18px rgba(255,75,62,.3);}
+  .pill{border-radius:999px;transition:.25s ease;}
+  .pill:hover{border-color:#555;color:#fff;transform:translateY(-1px);}
+  .verdict{border-radius:12px;}
+  footer{border-top:1px solid rgba(255,255,255,.06);margin-top:20px;padding-top:30px;}
+  @keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes brandPulse{0%,100%{opacity:.65;box-shadow:0 0 10px var(--brass)}50%{opacity:1;box-shadow:0 0 22px var(--brass)}}
+  @media (max-width:800px){
+    .topnav .inner{overflow-x:auto;}
+    .brandmark{min-width:max-content;}
+    .hero{min-height:720px;padding-top:105px;}
+    .hero-stats{grid-template-columns:repeat(2,1fr);}
+    .hero-stat{padding-right:16px;}
+    .vehicle-showcase{grid-template-columns:1fr;}
+    .vehicle-card{height:150px;}
+  }
+  @media (max-width:520px){
+    .wrap{padding:0 18px;}
+    .topnav .inner{padding:0 18px;}
+    .topnav button{padding:10px 9px;font-size:.78rem;}
+    .hero h1{font-size:3rem;}
+    .hero{min-height:760px;}
+    .hero-stats{grid-template-columns:1fr 1fr;}
+    .hero-stat .n{font-size:1.35rem;}
+    .hero-stat .l{font-size:.62rem;}
+    .photo-break{height:260px;background-attachment:scroll;}
+  }
+
+</style>
+</head>
+<body>
+
+<input type="file" id="milesFileInput" accept=".xlsx" style="display:none;">
+
+<div class="topnav">
+  <div class="inner">
+    <div class="brandmark" aria-label="Miles Dashboard">
+      <span class="brand-dot"></span>
+      <span>MILES</span>
+    </div>
+    <button data-page="dash" class="active">Dashboard</button>
+    <button data-page="fin">Finances</button>
+    <button data-page="maint">Maintenance</button>
+    <button data-page="compare">EV comparison</button>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="page active" id="page-dash">
+  <div class="hero">
+    <div class="hero-bg">
+      <div class="layer texture"></div>
+      <div class="layer jeep"></div>
+      <div class="layer truck"></div>
+    </div>
+    <div class="wrap">
+      <p class="tag" id="heroTag"><span class="pulse"></span> Nick's Garage · through Sept 2026</p>
+      <h1>Two vehicles.<br><span class="hero-accent">One living dashboard.</span></h1>
+      <p class="hero-copy">See how the Grand Cherokee and Raptor are actually being driven, what they cost, and where the next replacement lands.</p>
+      <div class="vehicle-showcase">
+        <article class="vehicle-card jeep-card">
+          <div class="vehicle-image"></div>
+          <div class="vehicle-overlay"></div>
+          <div class="vehicle-content">
+            <span class="vehicle-kicker">DAILY / SUV</span>
+            <h3>Grand Cherokee</h3>
+            <span class="vehicle-meta">Light duty · efficiency focus</span>
+          </div>
+          <span class="vehicle-arrow">↗</span>
+        </article>
+        <article class="vehicle-card raptor-card">
+          <div class="vehicle-image"></div>
+          <div class="vehicle-overlay"></div>
+          <div class="vehicle-content">
+            <span class="vehicle-kicker">TRUCK / FUTURE</span>
+            <h3>Raptor</h3>
+            <span class="vehicle-meta">Heavy duty · replacement target</span>
+          </div>
+          <span class="vehicle-arrow">↗</span>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-bar">
+    <div class="wrap">
+      <div class="hero-stats">
+        <div class="hero-stat" data-target="dash:gasSection"><span class="n odo" id="statGas">$4,111</span><span class="l">Combined fuel cost/yr, trailing 12-mo avg price</span></div>
+        <div class="hero-stat" data-target="dash:drivingSplitSection"><span class="n odo" id="statSplit">75%</span><span class="l">Share of household miles now on the truck</span></div>
+        <div class="hero-stat" data-target="fin:milestoneSection"><span class="n odo">~$19,900</span><span class="l">Est. car-fund balance today, tracking the S&P 500</span></div>
+        <div class="hero-stat" data-target="compare:tcoBreakdownSection"><span class="n odo" id="statTco">$2,382</span><span class="l" id="statTcoLabel">Model Y LR's net 8-yr edge over Highlander Hybrid</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+  <section id="drivingSplitSection">
+    <h2>The driving split has flipped</h2>
+    <p class="lede" id="drivingSplitLede">Same two vehicles, a completely different division of labor before and after the old F-150 was replaced.</p>
+    <div class="car" style="border-top-color:var(--brass);">
+      <table class="data" style="margin-top:2px;" id="drivingSplitTable">
+        <tr><th></th><th class="num">Jeep</th><th class="num">Truck</th></tr>
+      </table>
+    </div>
+    <div class="insight" id="drivingSplitInsight">Calculating…</div>
+  </section>
+
+  <section>
+    <h2>Mileage trend and where it's headed</h2>
+    <p class="lede">A 3-month rolling average of miles per month per vehicle, smoothed to show the trend instead of every month's noise. The dashed lines project 24 months forward at each vehicle's current pace (trailing 12 months), the same pace used to estimate upcoming maintenance and replacement timing on the other tabs.</p>
+    <div class="chart-box">
+      <canvas id="milesChart"></canvas>
+    </div>
+    <p class="chart-note" id="paceNote">Calculating…</p>
+  </section>
+  </div>
+
+  <div class="photo-break" style="background-image:url('hero-jeep.jpg');">
+    <div class="cap"><div class="t">The Jeep</div><div class="s" id="photoJeepCap">Light duty, low cost per mile at its current pace.</div></div>
+  </div>
+
+  <div class="wrap">
+  <section id="gasSection">
+    <h2>Annual fuel spend</h2>
+    <p class="lede">Each year's actual gas spend: that month's Seattle-area price applied to the miles actually driven, added up across both vehicles. Months beyond the logged Seattle price history use your workbook's flat gas-price assumption instead; see the note below the chart.</p>
+    <div class="chart-box">
+      <canvas id="gasChart"></canvas>
+    </div>
+    <p class="chart-note" id="gasChartNote">2026 is partial year.</p>
+
+    <div class="insight warn">
+      <strong>Gas jumped hard in 2026.</strong> Regular gas in the Seattle area averaged $4.00 to $4.70/gal through most of 2023 to 2025, then prices jumped from $3.95 in January 2026 to $5.75 by May, a genuine spike, not noise, and have stayed in the mid-$5 range since.
+    </div>
+  </section>
+
+  <section id="cpmDashSection">
+    <h2>What each vehicle costs per mile, right now</h2>
+    <p class="lede">Fuel at the trailing 12-month average price plus every scheduled maintenance item still ahead, spread across the miles between today's odometer and that schedule's last item. The Maintenance tab uses this same number to weigh keeping each vehicle against replacing it.</p>
+    <div class="cc-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="cc-card good">
+        <div class="lbl">Jeep</div>
+        <span class="need good" id="cpmDashJgcOut"></span>
+        <div class="sub">Cost per mile, current odometer forward</div>
+      </div>
+      <div class="cc-card good">
+        <div class="lbl">Truck</div>
+        <span class="need good" id="cpmDashTruckOut"></span>
+        <div class="sub">Cost per mile, current odometer forward</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The seasonal rhythm underneath the trend</h2>
+    <p class="lede" id="seasonLede">Stripping out the year-over-year trend and the truck swap, each vehicle has its own repeating shape across the calendar year. This is each month's average share of that vehicle's annual mileage, averaged across every full calendar year in your data.</p>
+    <div class="chart-box">
+      <canvas id="seasonChart"></canvas>
+    </div>
+    <div class="insight" id="seasonInsight1">Calculating…</div>
+    <div class="insight good" id="seasonInsight2">Calculating…</div>
+  </section>
+
+  <section>
+    <h2>Where this points</h2>
+    <ul class="recs" id="recsList">
+      <li><span class="n odo">1</span><div><div class="t">The truck is doing the heavy lifting now</div><div class="d">Its tires, brakes, and oil changes will hit their next mileage markers noticeably sooner than a calendar-year schedule would suggest. See the Maintenance tab.</div></div></li>
+      <li><span class="n odo">2</span><div><div class="t">The Jeep's light duty is a cost advantage worth keeping</div><div class="d">Its fuel and wear costs are naturally low at its current pace. See the keep-vs-replace model on the Maintenance tab for why that argues for holding onto it.</div></div></li>
+      <li><span class="n odo">3</span><div><div class="t">The savings plan's timeline depends heavily on the contribution amount</div><div class="d">Model your own numbers on the Finances tab. A bigger monthly contribution changes the self-sustaining date substantially.</div></div></li>
+    </ul>
+  </section>
+
+  <footer id="dashFooter">Built from MILES.xlsx.</footer>
+
+  <div class="bottom-load">
+    <button class="loadBtn" id="topnavLoadBtn">Update from MILES.xlsx</button>
+  </div>
+  </div>
+</div>
+
+<!-- ============ FINANCES ============ -->
+<div class="page" id="page-fin">
+  <div class="hero" style="padding:48px 0 32px;">
+    <div class="hero-bg">
+      <div class="layer texture"></div>
+      <div class="layer jeep"></div>
+      <div class="layer truck"></div>
+    </div>
+    <div class="wrap">
+      <p class="tag">The car fund</p>
+      <h1 style="font-size:1.9rem;">What replacing these two actually costs the brokerage account, and when.</h1>
+    </div>
+  </div>
+
+  <div class="wrap">
+  <section>
+    <h2>Simulate your own plan</h2>
+    <p class="lede">The goal: stop saving for cars entirely and still drive what you want. Three levers control when that happens: what you spend per vehicle, how long you keep each one, and how much you save monthly. Below is the earliest year, at today's settings, that contributions could safely drop to $0/mo and coast on growth alone, plus what nudging just <em>one</em> of those levers would do to that year. Assumes a 10% average annual return throughout.</p>
+
+    <div class="lab-panel">
+      <div class="controls" style="margin-bottom:6px;">
+        <div class="control">
+          <label>Monthly contribution <span class="val" id="fmVal">$300</span></label>
+          <input type="range" id="fmSlider" min="0" max="1500" step="25" value="300">
+        </div>
+        <div class="control">
+          <label>Then replace again every <span class="val" id="cycVal">10 years</span></label>
+          <input type="range" id="cycSlider" min="5" max="20" step="1" value="10">
+        </div>
+      </div>
+      <div class="fleet" style="margin-bottom:18px;">
+        <div class="car" style="border-top-color:var(--jeep);">
+          <h3>SUV</h3>
+          <div class="who">Replacing the Jeep</div>
+          <div class="control">
+            <label>SUV cost <span class="val" id="suvcVal">$50,000</span></label>
+            <input type="range" id="suvcSlider" min="35000" max="70000" step="1000" value="50000">
+          </div>
+          <div class="control" style="margin-top:16px;">
+            <label>SUV replacement year <span class="val" id="suvyVal">2036</span></label>
+            <input type="range" id="suvySlider" min="2025" max="2050" step="1" value="2036">
+          </div>
+          <p class="chart-note" id="jgcCombinedNote" style="margin-top:10px;">Calculating…</p>
+        </div>
+        <div class="car truck" style="border-top-color:var(--truck);">
+          <h3>Truck</h3>
+          <div class="who">Replacing the current truck</div>
+          <div class="control">
+            <label>Truck cost <span class="val" id="truckcVal">$65,000</span></label>
+            <input type="range" id="truckcSlider" min="45000" max="90000" step="1000" value="65000">
+          </div>
+          <div class="control" style="margin-top:16px;">
+            <label>Truck replacement year <span class="val" id="truckyVal">2034</span></label>
+            <input type="range" id="truckySlider" min="2025" max="2050" step="1" value="2034">
+          </div>
+          <p class="chart-note" id="truckCombinedNote" style="margin-top:10px;">Calculating…</p>
+        </div>
+      </div>
+
+      <div class="control" style="margin-bottom:18px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="lumpToggle" style="width:16px;height:16px;">
+          Include a one-time lump sum (bonus, tax refund, etc.)
+        </label>
+      </div>
+      <div class="controls" id="lumpControls" style="display:none;">
+        <div class="control">
+          <label>Lump sum amount <span class="val" id="flVal">$5,000</span></label>
+          <input type="range" id="flSlider" min="500" max="30000" step="500" value="5000">
+        </div>
+        <div class="control">
+          <label>Lump sum year <span class="val" id="fyVal">2027</span></label>
+          <input type="range" id="fySlider" min="2025" max="2045" step="1" value="2027">
+        </div>
+      </div>
+
+      <div class="verdict" id="goalVerdict">
+        <span class="big odo" id="goalVerdictOut"></span>
+        <span class="txt" id="goalVerdictTxt"></span>
+      </div>
+
+      <div class="cc-grid">
+        <div class="cc-card" id="ccMonthly">
+          <div class="lbl">Lever 1: Monthly savings</div>
+          <div class="cur" id="ccMonthlyCur"></div>
+          <span class="need" id="ccMonthlyNeed"></span>
+          <div class="sub" id="ccMonthlySub"></div>
+        </div>
+        <div class="cc-card" id="ccCost">
+          <div class="lbl">Lever 2: Vehicle cost</div>
+          <div class="cur" id="ccCostCur"></div>
+          <span class="need" id="ccCostNeed"></span>
+          <div class="sub" id="ccCostSub"></div>
+        </div>
+        <div class="cc-card" id="ccCycle">
+          <div class="lbl">Lever 3: Keep-length</div>
+          <div class="cur" id="ccCycleCur"></div>
+          <span class="need" id="ccCycleNeed"></span>
+          <div class="sub" id="ccCycleSub"></div>
+        </div>
+      </div>
+
+      <div class="verdict" style="opacity:0.85;">
+        <span class="big odo" id="minBalOut"></span>
+        <span class="txt" id="minBalTxt"></span>
+      </div>
+    </div>
+
+    <div class="chart-box" style="margin-top:20px;">
+      <canvas id="simChart"></canvas>
+    </div>
+    <p class="chart-note">Red markers show each replacement purchase. The window shown runs to one cycle past your later replacement year, so the axis stays readable; push the years or cycle length out further and the chart extends with them.</p>
+  </section>
+
+  <section id="cpmFinSection">
+    <h2>Cost per mile if you replace on this plan</h2>
+    <p class="lede">The SUV/truck cost and cycle-length sliders above, spread across the miles each vehicle would rack up at its current pace over one replacement cycle. Compare this against the Maintenance tab's "keep" cost per mile to see which side of the trade-off you're actually on.</p>
+    <div class="cc-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="cc-card warn">
+        <div class="lbl">SUV, replace on this plan</div>
+        <span class="need warn" id="cpmFinSuvOut"></span>
+        <div class="sub" id="cpmFinSuvSub"></div>
+      </div>
+      <div class="cc-card warn">
+        <div class="lbl">Truck, replace on this plan</div>
+        <span class="need warn" id="cpmFinTruckOut"></span>
+        <div class="sub" id="cpmFinTruckSub"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="milestoneSection">
+    <p class="lede">Pure growth from today's estimated balance (~$19,900), using the monthly contribution slider above, a flat 10% annual return, and dollar-cost averaging. No vehicle purchases subtracted here, this is just what the contribution plan grows into on its own.</p>
+    <div class="chart-box">
+      <table class="data" id="milestoneTable">
+        <tr><th>Years from now</th><th>Year</th><th class="num">Projected balance</th></tr>
+      </table>
+    </div>
+    <p class="chart-note">Recalculates automatically whenever you move the monthly contribution slider above.</p>
+  </section>
+  </div>
+
+  <div class="photo-break" style="background-image:url('hero-r1.jpg');">
+    <div class="cap"><div class="t">The Raptor, someday</div><div class="s">What the truck side of the fund is actually saving toward.</div></div>
+  </div>
+
+  <div class="wrap">
+  <section>
+    <h2>Where in your own mileage window you replace matters a lot</h2>
+    <p class="lede" id="timingCompareLede">Loading current pace...</p>
+    <div class="chart-box">
+      <canvas id="timingCompareChart"></canvas>
+    </div>
+    <div class="insight warn" id="timingCompareInsight">Calculating…</div>
+  </section>
+
+  <section>
+    <h2>How much should you actually be saving?</h2>
+    <p class="lede">The goal you described: reach a point where the fund buys every future vehicle on its own, with no more monthly contributions needed. Here's what that takes given the real prices and the real timeline.</p>
+    <ul class="recs">
+      <li><span class="n odo">1</span><div><div class="t">The truck's 2033 purchase is already on track</div><div class="d">At today's $300/mo and 10% average returns, the fund covers the Raptor's $65,000 in 2033 with about $8,750 left over. The near-term goal doesn't need a change.</div></div></li>
+      <li><span class="n odo">2</span><div><div class="t">Funding both vehicles forever, on a 10-year cycle, takes about $390/mo</div><div class="d">Not $300. The gap shows up later: the SUV purchase in the early-to-mid 2040s, plus repeating both every 10 years after that, is where today's contribution falls short. About $90/mo more closes it, assuming you keep contributing that amount indefinitely.</div></div></li>
+      <li><span class="n odo">3</span><div><div class="t">Stretching to a 12-year cycle brings that down to about $340/mo</div><div class="d">A smaller step up from today, and realistic given how lightly both vehicles are actually driven.</div></div></li>
+      <li><span class="n odo">4</span><div><div class="t">A lump sum is still the fastest single lever</div><div class="d">Money in earlier compounds longer. A $10,000 bonus or tax refund dropped in now closes more of the gap than an equivalent raise in monthly contributions spread over the same years.</div></div></li>
+      <li><span class="n odo">5</span><div><div class="t">"Never save again" is a balance target, not just a contribution rate</div><div class="d">At 10% growth, roughly $70,000 to $75,000 pooled in the fund is what lets both vehicles' replacement cycles regenerate on growth alone. You're at about $19,900 today; use the simulator above to see how contribution size and any lump sum change when that's reached.</div></div></li>
+    </ul>
+  </section>
+
+  <footer>Balance model: start-of-2025 balance $15,200, compounding annually at a flat 10% return, plus 12 times the monthly contribution each year, any one-time lump sum in its chosen year, and a withdrawal of the stated cost in each vehicle's replacement year and every cycle-length interval after. Costs are not inflated forward. Raptor and SUV price ranges are planning estimates, not quotes; adjust the sliders to match what you're actually seeing on the lot.</footer>
+  </div>
+</div>
+
+<!-- ============ MAINTENANCE ============ -->
+<div class="page" id="page-maint">
+  <div class="hero" style="padding:48px 0 32px;">
+    <div class="hero-bg">
+      <div class="layer texture"></div>
+      <div class="layer jeep"></div>
+      <div class="layer truck"></div>
+    </div>
+    <div class="wrap">
+      <p class="tag">Maintenance and ownership horizon</p>
+      <h1 style="font-size:1.9rem;">What's been fixed, what's coming up, and how long each vehicle is worth keeping.</h1>
+    </div>
+  </div>
+
+  <div class="wrap">
+  <section>
+    <h2>Load your latest MILES.xlsx</h2>
+    <div class="loader-banner">
+      <div class="txt">
+        <strong>Update the whole dashboard from a new export.</strong> Odometer readings on the "Cars Stats" tab, plus the "JGC" and "F150 Lariat" maintenance schedules, drive every chart on all three tabs. Load a new file whenever you log this month's readings.
+      </div>
+      <button id="maintLoadBtn">Choose MILES.xlsx</button>
+    </div>
+    <p class="loader-status" id="loaderStatus"></p>
+  </section>
+
+  <section>
+    <h2>Repair history</h2>
+    <div class="insight warn">
+      <strong>Watch the Jeep's 74,000 to 79,000 mile window.</strong> A transmission/transfer-case/differential service ($1,219), header bolts ($1,400), and an engine mount ($585) all landed inside a single 5,000-mile stretch in 2024/25: $3,204 in three repairs, against $100 oil changes everywhere else on the timeline. Worth asking your mechanic whether one root cause tied those together, so you're not paying to fix the same problem three times.
+    </div>
+    <div class="insight good">
+      <strong>The truck's $1,920 "maintenance" was a one-time recon, not a run rate.</strong> Transmission service, battery, windshield, and front brakes were all done the month it was bought. Its actual forward maintenance is just the oil changes below, about $200/yr.
+    </div>
+    <div class="insight">
+      <strong>Maintained on a tighter schedule than most owners run.</strong> Both vehicles get transmission fluid flushes every 50,000 miles (not the 100k+ many owners stretch to) and spark plugs around 100,000 miles. It costs more up front, but it's a real part of why these two are worth keeping this long at such low annual mileage; see the schedule below.
+    </div>
+  </section>
+  </div>
+
+  <div class="photo-break" style="background-image:url('hero-r.jpg');">
+    <div class="cap"><div class="t">The truck</div><div class="s" id="photoTruckCap">Carrying most of the household's miles now.</div></div>
+  </div>
+
+  <div class="wrap">
+  <section>
+    <h2>Upcoming maintenance</h2>
+    <p class="lede">Assuming 5,000-mile oil-change intervals, 50,000-mile transmission flushes, spark plugs around 100k, and each vehicle's current driving pace (recalculated from the trailing 12 months of logged miles, so this updates automatically as new months come in).</p>
+
+    <div class="two-col">
+      <div class="car" id="jgcNextTile">
+        <h3>Jeep, next up</h3>
+        <div class="who" id="jgcNextWho">loading…</div>
+      </div>
+      <div class="car truck" id="truckNextTile">
+        <h3>Truck, next up</h3>
+        <div class="who" id="truckNextWho">loading…</div>
+      </div>
+    </div>
+
+    <div class="insight warn" id="truckOverdueInsight" style="display:none;"></div>
+
+    <div class="two-col" style="margin-top:20px;">
+      <div>
+        <h3 style="font-size:1.02rem;margin-bottom:10px;">Jeep, full schedule ahead</h3>
+        <table class="data" id="jgcScheduleTable">
+          <tr><th>Mileage</th><th>Item</th><th>Est. date</th><th class="num">Cost</th></tr>
+        </table>
+        <p class="chart-note" style="margin:14px 0 6px;">Next 3 years, by cost</p>
+        <div class="year-tiles" id="jgcScheduleTiles"></div>
+      </div>
+      <div>
+        <h3 style="font-size:1.02rem;margin-bottom:10px;">Truck, full schedule ahead</h3>
+        <table class="data" id="truckScheduleTable">
+          <tr><th>Mileage</th><th>Item</th><th>Est. date</th><th class="num">Cost</th></tr>
+        </table>
+        <p class="chart-note" style="margin:14px 0 6px;">Next 3 years, by cost</p>
+        <div class="year-tiles" id="truckScheduleTiles"></div>
+      </div>
+    </div>
+
+    <div class="chart-box" style="margin-top:20px;">
+      <canvas id="cumMaintChart"></canvas>
+    </div>
+
+    <div class="insight">
+      <strong>Your tires are outlasting the schedule you built.</strong> The rotation plan budgets 6,000 mi/season on all-seasons and 2,500 mi/season on snows, but actual use has landed under that every year: 3,260, 4,486, and 3,500 actual all-season miles in 2023, 2024, and 2025 against a 6,000/5,500/4,500 budget. With the truck now carrying most household miles, it's worth re-checking this against truck-specific tire wear rather than the Jeep's.
+    </div>
+    <div class="insight">
+      <strong>If you retrofit adaptive cruise on the truck, source the parts yourself.</strong> The sensor, bracket, and HUD parts on your ACC list price out to $520 through an OEM parts reseller versus $1,309 for the identical part numbers at the comparison/dealer price, a $789 difference.
+    </div>
+  </section>
+
+  <section id="cpmMaintSection">
+    <h2>Cost per mile, right now</h2>
+    <p class="lede">Fuel at the trailing 12-month average price plus every scheduled maintenance item still ahead, spread across the miles between today's odometer and that schedule's last item. This is the "keep" number the charts below compare against replacing.</p>
+    <div class="cc-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="cc-card good">
+        <div class="lbl">Jeep, forward cost/mile</div>
+        <span class="need good" id="cpmJgcOut"></span>
+        <div class="sub">Fuel + scheduled maintenance, current odometer forward</div>
+      </div>
+      <div class="cc-card good">
+        <div class="lbl">Truck, forward cost/mile</div>
+        <span class="need good" id="cpmTruckOut"></span>
+        <div class="sub">Fuel + scheduled maintenance, current odometer forward</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How long should you keep each one?</h2>
+    <p class="lede">Your own targets, the Jeep somewhere between 125k and 150k miles, the truck around 150k, pin down a window better than a generic model can. Here's when the odometer actually gets there at current driving pace, plus a cost check on top of it.</p>
+
+    <div class="insight good" id="mileageWindowInsight">Calculating…</div>
+
+    <div class="lab-panel">
+      <div class="controls">
+        <div class="control">
+          <label>If you replaced it, how many years would you keep the new one? <span class="val" id="hzVal">10 years</span></label>
+          <input type="range" id="hzSlider" min="3" max="25" step="1" value="10">
+        </div>
+        <div class="control">
+          <label>SUV replacement cost <span class="val" id="rcSuvVal">$50,000</span></label>
+          <input type="range" id="rcSuvSlider" min="35000" max="70000" step="1000" value="50000">
+        </div>
+        <div class="control">
+          <label>Truck replacement cost <span class="val" id="rcTruckVal">$65,000</span></label>
+          <input type="range" id="rcTruckSlider" min="45000" max="90000" step="1000" value="65000">
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col" style="margin-top:20px;">
+      <div class="chart-box">
+        <canvas id="keepJgc"></canvas>
+        <div class="verdict"><span class="big odo" id="jgcVerdictNum"></span><span class="txt" id="jgcVerdictTxt"></span></div>
+      </div>
+      <div class="chart-box">
+        <canvas id="keepF150"></canvas>
+        <div class="verdict"><span class="big odo" id="f150VerdictNum"></span><span class="txt" id="f150VerdictTxt"></span></div>
+      </div>
+    </div>
+    <p class="chart-note" id="keepBreakevenNote"></p>
+
+    <div class="insight">
+      <strong>The step up in price changes the math, but not the verdict.</strong> A $65,000 Raptor and a $50,000 SUV are real jumps from the $45,000 flat assumption, and a much bigger jump from the $20,000 you paid for the current truck. Even so, at these low annual mileages, keeping wins on pure cost per mile at almost any horizon you'd realistically plan around. The case for replacing on schedule will come down to reliability and wanting the Raptor and the SUV, not because the current vehicles got expensive to run.
+    </div>
+  </section>
+
+  <footer id="maintFooter">Forward cost/mile uses each vehicle's scheduled maintenance from today's odometer forward, plus fuel at the trailing 12-month average price, not the historical blended average, since sunk repairs don't affect the replace-or-keep decision.</footer>
+  </div>
+</div>
+
+<!-- ============ EV COMPARISON ============ -->
+<div class="page" id="page-compare">
+  <div class="hero" style="padding:48px 0 32px;">
+    <div class="hero-bg">
+      <div class="layer texture"></div>
+      <div class="layer jeep"></div>
+      <div class="layer truck"></div>
+    </div>
+    <div class="wrap">
+      <p class="tag">EV comparison</p>
+      <h1 style="font-size:1.9rem;">Model Y vs. the alternatives: a cost comparison.</h1>
+    </div>
+  </div>
+
+  <div class="wrap">
+  <section id="tcoSection">
+    <p class="lede">Two ways to think about replacing the Jeep: a same-size hybrid SUV, or a same-size gas V8 like the one currently in the driveway but seven years newer. Both are compared against a Model Y, Long Range or Performance, <span class="odo" id="tcoLocationLabel" style="color:var(--brass);">Sammamish</span> assumptions used everywhere else in this dashboard by default, over whatever location, EV charging window, annual mileage, and holding period you set below (off-peak charging, <span class="odo" id="tcoMilesLabel" style="color:var(--brass);">15,000</span> mi/yr, <span class="odo" id="tcoHoldYears" style="color:var(--brass);">8</span>-year hold by default). Only the two Tesla trims are affected by the charging-window choice; the Highlander and Grand Cherokee run on gas.</p>
+
+    <div class="lab-panel">
+      <div class="controls tco-controls" style="margin-bottom:0;">
+        <div class="control">
+          <label>Location</label>
+          <select id="tcoLocationSelect">
+            <option value="sammamish">Sammamish, WA</option>
+            <option value="yakima">Yakima, WA</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>EV charging <span class="val" id="tcoChargingRate">7.6&cent;/kWh</span></label>
+          <select id="tcoChargingSelect">
+            <option value="offpeak">Off-peak (overnight)</option>
+            <option value="onpeak">On-peak (daytime/evening)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>FSD <span class="val" id="tcoFsdCost">no cost</span></label>
+          <select id="tcoFsdSelect">
+            <option value="none">None</option>
+            <option value="monthly">Monthly subscription</option>
+            <option value="onetime">One-time purchase</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Compare Model Y against</label>
+          <select id="tcoAltSelect">
+            <option value="highlander">Toyota Highlander Hybrid AWD (2023)</option>
+            <option value="grandcherokee">Jeep Grand Cherokee Summit V8 (2021)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Model Y trim</label>
+          <select id="tcoTrimSelect">
+            <option value="lr">Long Range (2023)</option>
+            <option value="performance">Performance (2023)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Years owned <span class="val" id="tcoYearsVal">8 years</span></label>
+          <input type="range" id="tcoYearsSlider" min="1" max="15" step="1" value="8">
+        </div>
+        <div class="control">
+          <label>Annual miles driven <span class="val" id="tcoMilesVal">15,000</span></label>
+          <input type="range" id="tcoMilesSlider" min="5000" max="25000" step="1000" value="15000">
+        </div>
+      </div>
+    </div>
+
+    <div class="verdict" id="tcoVerdict" style="margin-top:18px;">
+      <span class="big odo" id="tcoVerdictOut"></span>
+      <span class="txt" id="tcoVerdictTxt"></span>
+    </div>
+
+    <div class="chart-box" style="margin-top:14px;">
+      <canvas id="tcoChart"></canvas>
+    </div>
+    <p class="chart-note">Both Model Y trims are always shown alongside whichever alternative is selected, so a near-tie stays visible without extra clicks. Resale value is shown as a credit, a negative segment, against the gross cost.</p>
+
+    <div class="insight" id="tcoResaleInsight"><strong>Tesla resale has a real cliff, not just a discount.</strong> <a href="https://caredge.com/tesla/model-y/depreciation" target="_blank" rel="noopener">CarEdge's year-by-year data</a> shows Model Y residual value dropping from 38.9% in year 5 to 29.3% in year 6, a 9.6-point single-year drop that lines up with the 8-year/120,000-mile battery and drivetrain warranty aging out. <a href="https://caredge.com/toyota/highlander/depreciation" target="_blank" rel="noopener">The Highlander's depreciation curve</a> has no equivalent cliff, just a smooth 5 to 6 points a year the whole way. That gap is why Tesla resale runs weaker here, not a generic assumption.</div>
+
+    <div class="insight" id="tcoComparisonInsight"></div>
+
+    <div class="insight warn" id="tcoResaleCaveat" style="display:none;"><strong>Least certain number on this chart:</strong> the 2021 Summit V8 is already about 5 years old today; holding it 8 more years pushes it to age 13, one year past <a href="https://caredge.com/jeep/grand-cherokee/depreciation" target="_blank" rel="noopener">CarEdge's own 12-year reliable-data ceiling</a>. The $13,800 resale figure required extrapolating the flattening trend from years 9 through 12 forward, and there's anchor ambiguity too, since today's actual value tracks closer to CarEdge's age-4 row than its age-5 row. Real risk skews further downward given the WK2 Summit's known post-warranty air-suspension and electronics repair reputation, which isn't priced into maintenance at all.</div>
+
+    <div id="tcoBreakdownSection" style="padding-top:24px;">
+      <h2 style="font-size:1.15rem;">Full breakdown <span class="val" id="tcoBreakdownYears" style="font-size:0.85rem;"></span></h2>
+      <div class="chart-box">
+        <table class="data" id="tcoBreakdownTable"></table>
+      </div>
+      <p class="chart-note">Cost per mile divides each vehicle's net total (gross cost minus resale) by total miles driven over the holding period you set above, the same basis the Maintenance tab's keep-vs-replace comparison uses, so the two are directly comparable.</p>
+    </div>
+
+    <div id="tcoBreakEvenSection" style="padding-top:24px;">
+      <h2 style="font-size:1.15rem;">Break-even: does the cheaper option flip?</h2>
+      <p class="lede">All four vehicles, not just the two selected above. Purchase price and sales tax are one-time; fuel, tires, maintenance, registration, and insurance accrue every year you own it, and resale value keeps decaying. Longer holds favor whichever vehicle has the lower running cost, even if it started out more expensive net of resale. Click any name in the legend to hide or show that line.</p>
+      <div class="chart-box">
+        <canvas id="tcoBreakEvenChart"></canvas>
+      </div>
+      <div class="insight" id="tcoBreakEvenInsight">Calculating…</div>
+    </div>
+
+    <ul class="assumptions-list" style="margin-top:18px;" id="tcoAssumptionsList"></ul>
+  </section>
+  </div>
+</div>
+
+<script>
+/* ---------- NAV ---------- */
+document.querySelectorAll('.topnav button[data-page]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.topnav button[data-page]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-'+btn.dataset.page).classList.add('active');
+    window.scrollTo({top:0,behavior:'instant'});
+  });
+});
+
+/* ---------- DRILLABLE HERO STATS ---------- */
+document.querySelectorAll('.hero-stat[data-target]').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    const [pageId, sectionId] = el.dataset.target.split(':');
+    const navBtn = document.querySelector(`.topnav button[data-page="${pageId}"]`);
+    if(navBtn && !navBtn.classList.contains('active')) navBtn.click();
+    setTimeout(()=>{
+      const sec = document.getElementById(sectionId);
+      if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 60);
+  });
+});
+
+const gridColor = "#2A2A2C";
+const inkDim = "#9A9793";
+Chart.defaults.color = inkDim;
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 11;
+const chartFont = {family:"'Work Sans', sans-serif", size:11};
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ==========================================================================
+   DATA LAYER
+   Everything below in this section is either (a) the baked-in snapshot this
+   dashboard shipped with, used until a newer MILES.xlsx is loaded, or (b) the
+   loader/parser that turns a new workbook into that same shape. Every chart
+   and insight further down is built by computeDerived() + renderAll(), which
+   re-run any time new data loads, so "load a new file" really does refresh
+   everything on all three tabs.
+   ========================================================================== */
+
+const STORAGE_KEY = 'milesDashboardData_v1';
+
+const DEFAULT_DATA = {
+  monthLabels: ["Jan 2023","Feb 2023","Mar 2023","Apr 2023","May 2023","Jun 2023","Jul 2023","Aug 2023","Sep 2023","Oct 2023","Nov 2023","Dec 2023","Jan 2024","Feb 2024","Mar 2024","Apr 2024","May 2024","Jun 2024","Jul 2024","Aug 2024","Sep 2024","Oct 2024","Nov 2024","Dec 2024","Jan 2025","Feb 2025","Mar 2025","Apr 2025","May 2025","Jun 2025","Jul 2025","Aug 2025","Sep 2025","Oct 2025","Nov 2025","Dec 2025","Jan 2026","Feb 2026","Mar 2026","Apr 2026","May 2026","Jun 2026","Jul 2026","Aug 2026"],
+  jgcMiles: [600,550,400,850,950,950,430,970,400,815,621,414,580,370,490,565,1039,422,305,605,469,875,680,615,485,343,433,737,217,680,420,510,438,322,395,435,110,385,125,382,68,175,90,50],
+  truckMiles: [250,220,99,133,266,207,155,165,233,22,183,367,110,240,225,258,273,351,240,205,333,185,235,280,230,189,246,150,0,876,924,950,1150,1100,1100,1150,800,430,520,540,640,740,450,130],
+  truckSwapIndex: 32,
+  jgcSwapIndex: null,
+  jgcCurrentMi: 83615,
+  truckCurrentMi: 93700,
+  todayISO: '2026-09-01',
+  jgcOriginalMi: 50000,
+  truckOriginalMi: 84000,
+  jgcMpg: 15,
+  truckMpg: 17,
+  avgGasPrice: 6,
+  jgcLastReplacedYear: 2022,
+  truckLastReplacedYear: 2025,
+  jgcAllItems: [
+    {year:2023, mi:58000, cost:100, item:'Oil Change'},
+    {year:2023, mi:63400, cost:100, item:'Oil Change'},
+    {year:2023, mi:67500, cost:200, item:'Battery'},
+    {year:2024, mi:70000, cost:100, item:'Oil Change'},
+    {year:2024, mi:74000, cost:1218.56, item:'Transmission service, transfer case and differentials'},
+    {year:2024, mi:76000, cost:100, item:'Oil Change'},
+    {year:2025, mi:77000, cost:1400, item:'Header bolts'},
+    {year:2025, mi:79000, cost:585, item:'Engine mount'},
+    {year:2025, mi:81000, cost:100, item:'Oil Change'},
+    {year:2026, mi:86000, cost:100, item:'Oil Change'},
+    {year:2026, mi:91000, cost:100, item:'Oil Change'},
+    {year:2027, mi:96000, cost:100, item:'Oil Change'},
+    {year:2027, mi:100000, cost:1000, item:'Spark plugs / coolant'},
+    {year:2028, mi:101000, cost:100, item:'Oil Change'},
+    {year:2028, mi:106000, cost:100, item:'Oil Change'},
+    {year:2029, mi:110000, cost:1000, item:'Tires'},
+    {year:2029, mi:111000, cost:100, item:'Oil Change'},
+    {year:2029, mi:116000, cost:100, item:'Oil Change'},
+    {year:2030, mi:121000, cost:100, item:'Oil Change'},
+    {year:2030, mi:126000, cost:100, item:'Oil Change'}
+  ],
+  truckAllItems: [
+    {year:2025, mi:86000, cost:400, item:'Transmission service', completed:true},
+    {year:2025, mi:86000, cost:200, item:'Battery Size H7', completed:true},
+    {year:2025, mi:86000, cost:660, item:'Windshield', completed:true},
+    {year:2025, mi:87000, cost:660, item:'Front Brakes', completed:true},
+    {year:2026, mi:90000, cost:100, item:'Oil Change', completed:false},
+    {year:2026, mi:95000, cost:100, item:'Oil Change', completed:false},
+    {year:2027, mi:100000, cost:100, item:'Oil Change', completed:false},
+    {year:2027, mi:105000, cost:100, item:'Oil Change', completed:false},
+    {year:2028, mi:110000, cost:100, item:'Oil Change', completed:false},
+    {year:2028, mi:115000, cost:100, item:'Oil Change', completed:false}
+  ],
+  sourceLabel: 'baseline data through Aug 2026',
+  loadedAt: null
+};
+
+/* Real monthly regular gas prices, Seattle WA metro (EIA), Jan 2023 - Aug 2026.
+   Used for every month it covers; months beyond this use the workbook's flat
+   "Average Gas Cost per Gallon" figure instead (see computeDerived). */
+const GAS_PRICES_BASE = [
+  4.079,4.273,4.356,4.474,4.641,4.794,4.977,5.109,5.103,4.923,4.534,4.305,
+  4.128,4.040,4.315,4.680,4.692,4.463,4.346,4.276,4.240,4.160,4.115,4.044,
+  4.035,4.177,4.199,4.382,4.373,4.464,4.441,4.437,4.572,4.519,4.328,4.186,
+  3.951,4.185,4.944,5.455,5.745,5.562,5.187,5.187
+];
+
+function isBlank(v){ return v===undefined || v===null || v===''; }
+
+function loadStoredData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed.monthLabels) || !parsed.monthLabels.length) return null;
+    return parsed;
+  }catch(e){ console.warn('Could not read saved dashboard data', e); return null; }
+}
+function persistData(data){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  catch(e){ console.warn('Could not save dashboard data', e); }
+}
+
+/* ---------- XLSX PARSER ----------
+   Reads the three sheets the whole dashboard depends on: "Cars Stats" (odometer
+   readings, MPG, flat gas-price assumption), "JGC" and "F150 Lariat" (maintenance
+   schedules). Mirrors the sheet's own column layout exactly -- see comments. */
+async function parseMilesWorkbook(file){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array', cellDates:true});
+
+  const carsStats = wb.Sheets['Cars Stats'];
+  const jgcSheet = wb.Sheets['JGC'];
+  const f150Sheet = wb.Sheets['F150 Lariat'];
+  if(!carsStats || !jgcSheet || !f150Sheet){
+    throw new Error('This file is missing one of the expected tabs: "Cars Stats", "JGC", "F150 Lariat". Nothing was updated.');
+  }
+
+  const aoaCS = XLSX.utils.sheet_to_json(carsStats, {header:1, raw:true});
+  const aoaJGC = XLSX.utils.sheet_to_json(jgcSheet, {header:1, raw:true});
+  const aoaF150 = XLSX.utils.sheet_to_json(f150Sheet, {header:1, raw:true});
+  function val(aoa, r, c){ const row = aoa[r-1]; return row ? row[c-1] : undefined; }
+
+  // Odometer table: "Cars Stats", column B = date (first of month, pre-drive),
+  // C = Jeep odometer, D = truck odometer, starting row 15.
+  const odomRows = [];
+  for(let r=15; r<3000; r++){
+    const d = val(aoaCS,r,2), jgc = val(aoaCS,r,3), truck = val(aoaCS,r,4);
+    if(isBlank(d)) break;
+    if(isBlank(jgc) || isBlank(truck)) break;
+    const dateObj = d instanceof Date ? d : new Date(d);
+    if(isNaN(dateObj.getTime())) break;
+    odomRows.push({date:dateObj, jgc:Number(jgc), truck:Number(truck)});
+  }
+  if(odomRows.length < 2){
+    throw new Error('Found fewer than 2 complete months of odometer readings on "Cars Stats" (columns B/C/D from row 15). Nothing was updated.');
+  }
+
+  const jgcOriginalMi = Number(val(aoaCS,178,3));
+  const truckOriginalMi = Number(val(aoaCS,178,4));
+
+  // Monthly miles = consecutive odometer differences. A negative diff means a
+  // vehicle swap happened between those two readings (same column, new vehicle);
+  // anchor that one month to (new reading - that vehicle's "Original Miles"
+  // cell) instead of showing a nonsense negative number.
+  function monthlyDiffAndSwap(key, originalMi){
+    const out = []; let swapIndex = null;
+    for(let i=0;i<odomRows.length-1;i++){
+      let d = odomRows[i+1][key] - odomRows[i][key];
+      if(d < 0){
+        if(swapIndex===null) swapIndex = i+1;
+        const anchored = !isNaN(originalMi) ? odomRows[i+1][key]-originalMi : NaN;
+        d = (anchored>=0 && anchored<20000) ? anchored : 0;
+      }
+      out.push(d);
+    }
+    return {miles:out, swapIndex};
+  }
+  const jgcRes = monthlyDiffAndSwap('jgc', jgcOriginalMi);
+  const truckRes = monthlyDiffAndSwap('truck', truckOriginalMi);
+  const monthLabels = odomRows.slice(0,-1).map(r=>MONTH_NAMES[r.date.getMonth()]+' '+r.date.getFullYear());
+  const last = odomRows[odomRows.length-1];
+
+  // "Cars Stats": row 2 = avg gas price (col C), row 6/7 = MPG for Jeep/truck (col C).
+  const avgGasPrice = Number(val(aoaCS,2,3)) || 6;
+  const jgcMpg = Number(val(aoaCS,6,3)) || 15;
+  const truckMpg = Number(val(aoaCS,7,3)) || 17;
+
+  // Maintenance sheets: col A=year, B=at Mileage, C=Estimated Cost, D=Service,
+  // (F150 Lariat only) E=Service Completed.
+  function readMaintSheet(aoa, hasCompletedCol){
+    const items = [];
+    for(let r=2; r<300; r++){
+      const yr = val(aoa,r,1), mi = val(aoa,r,2), cost = val(aoa,r,3), service = val(aoa,r,4);
+      const completedRaw = hasCompletedCol ? val(aoa,r,5) : undefined;
+      if(isBlank(mi) || isBlank(cost) || isBlank(service)) continue;
+      items.push({
+        year: isBlank(yr) ? null : Number(yr),
+        mi: Number(mi), cost: Number(cost), item: String(service).trim(),
+        completed: hasCompletedCol ? (String(completedRaw).trim().toLowerCase()==='yes') : null
+      });
+    }
+    return items.sort((a,b)=>a.mi-b.mi);
+  }
+  const jgcAllItems = readMaintSheet(aoaJGC, false);
+  const truckAllItems = readMaintSheet(aoaF150, true);
+  if(!jgcAllItems.length || !truckAllItems.length){
+    throw new Error('Could not find maintenance rows on "JGC" and/or "F150 Lariat" (expected mileage/cost/service in columns B-D). Nothing was updated.');
+  }
+
+  return {
+    monthLabels, jgcMiles: jgcRes.miles, truckMiles: truckRes.miles,
+    truckSwapIndex: truckRes.swapIndex, jgcSwapIndex: jgcRes.swapIndex,
+    jgcCurrentMi: last.jgc, truckCurrentMi: last.truck,
+    todayISO: last.date.toISOString().slice(0,10),
+    jgcOriginalMi, truckOriginalMi, jgcMpg, truckMpg, avgGasPrice,
+    jgcLastReplacedYear: CURRENT_DATA.jgcLastReplacedYear,
+    truckLastReplacedYear: CURRENT_DATA.truckLastReplacedYear,
+    jgcAllItems, truckAllItems,
+    sourceLabel: file.name, loadedAt: new Date().toISOString()
+  };
+}
+
+/* Nick runs a tighter maintenance schedule than the sheet always lists explicitly:
+   a transmission fluid flush every 50,000 miles on both vehicles, and spark plugs
+   around 100,000 miles. If the loaded sheet doesn't already have a matching row
+   (within 4,000 mi), backfill one synthetically so the schedule reflects it. */
+function backfillStandardMaintenance(items){
+  const has = (targetMi, keyword, tol=4000) =>
+    items.some(i => i.item.toLowerCase().includes(keyword) && Math.abs(i.mi-targetMi)<=tol);
+  const out = items.slice();
+  if(!has(100000, 'spark')){
+    out.push({mi:100000, cost:450, item:'Spark plugs', year:null, completed:false, synthetic:true});
+  }
+  const transItems = items.filter(i=>/transmission/i.test(i.item));
+  const lastTransMi = transItems.length ? Math.max(...transItems.map(i=>i.mi)) : 0;
+  const nextTransMi = lastTransMi + 50000;
+  if(!has(nextTransMi, 'transmission')){
+    out.push({mi:nextTransMi, cost:400, item:'Transmission fluid flush', year:null, completed:false, synthetic:true});
+  }
+  return out.sort((a,b)=>a.mi-b.mi);
+}
+
+function estDate(today, currentMi, targetMi, paceMiPerYr){
+  const monthsAway = (targetMi-currentMi)/paceMiPerYr*12;
+  const totalMonths = today.getFullYear()*12+today.getMonth()+monthsAway;
+  const y = Math.floor(totalMonths/12);
+  const m = Math.round(totalMonths)%12;
+  return {label: MONTH_NAMES[((m%12)+12)%12]+' '+y, year:y, monthsAway, milesAway: targetMi-currentMi};
+}
+
+/* ---------- DERIVE everything charts/insights need from raw `data` ---------- */
+function computeDerived(data){
+  const today = new Date(data.todayISO+'T12:00:00');
+
+  // "Current pace" is averaged over every month since the last regime change
+  // (the truck swap, when household driving habits actually shifted), not a
+  // strict trailing-12-months window. That's deliberate: a single unusually
+  // high or low month/year would otherwise get extrapolated across 10-20 years
+  // of maintenance and replacement-timing projections. Averaging over more of
+  // the current regime as it accumulates shrinks any one outlier's weight,
+  // while still not blending in the old truck's stale driving pattern from
+  // before the swap. Falls back to trailing 12 months if no swap is detected
+  // or there's less than a year of data.
+  const regimeStart = (data.truckSwapIndex!=null && data.truckSwapIndex < data.monthLabels.length-1)
+    ? data.truckSwapIndex
+    : Math.max(0, data.monthLabels.length-12);
+  const regimeMonths = Math.max(1, data.monthLabels.length - regimeStart);
+  const jgcPace = data.jgcMiles.slice(regimeStart).reduce((a,b)=>a+b,0) / regimeMonths * 12;
+  const truckPace = data.truckMiles.slice(regimeStart).reduce((a,b)=>a+b,0) / regimeMonths * 12;
+  const paceWindowLabel = data.monthLabels[regimeStart] + ' to ' + data.monthLabels[data.monthLabels.length-1]
+    + ' (' + regimeMonths + ' mo' + (regimeMonths===1?'':'s') + ')';
+
+  const gasPrices = data.monthLabels.map((_,i)=> i<GAS_PRICES_BASE.length ? GAS_PRICES_BASE[i] : data.avgGasPrice);
+  const gasIsEstimated = data.monthLabels.map((_,i)=> i>=GAS_PRICES_BASE.length);
+  const trailingAvgGas = gasPrices.slice(-12).reduce((a,b)=>a+b,0)/Math.min(12,gasPrices.length);
+
+  const jgcItemsFull = backfillStandardMaintenance(data.jgcAllItems);
+  const truckItemsFull = backfillStandardMaintenance(data.truckAllItems);
+
+  // "future schedule" = not yet actually paid for. Truck sheet says so explicitly
+  // (Service Completed); JGC has no such column, so mileage vs current is the signal.
+  const jgcFuture = jgcItemsFull.filter(i=>i.mi>data.jgcCurrentMi);
+  const truckFuture = truckItemsFull.filter(i=> i.completed===false || (i.completed==null && i.mi>data.truckCurrentMi));
+  const truckOverdue = truckItemsFull.filter(i=> i.completed===false && i.mi<=data.truckCurrentMi);
+
+  function forwardCpm(futureItems, currentMi, mpg){
+    if(!futureItems.length) return trailingAvgGas/mpg;
+    const sumCost = futureItems.reduce((s,i)=>s+i.cost,0);
+    const maxMi = Math.max(...futureItems.map(i=>i.mi));
+    return trailingAvgGas/mpg + sumCost/(maxMi-currentMi);
+  }
+  const jgcForwardCpm = forwardCpm(jgcFuture, data.jgcCurrentMi, data.jgcMpg);
+  const truckForwardCpm = forwardCpm(truckFuture, data.truckCurrentMi, data.truckMpg);
+
+  // Seasonality: each month's average share of that vehicle's annual mileage,
+  // across every FULL calendar year present in the data (grows automatically).
+  function seasonality(miles, labels){
+    const byYear = {};
+    labels.forEach((lab,i)=>{
+      const [mon,yr] = lab.split(' ');
+      (byYear[yr] = byYear[yr]||{})[mon] = miles[i];
+    });
+    const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const fullYears = Object.keys(byYear).filter(yr=>monthOrder.every(m=>byYear[yr][m]!=null));
+    return monthOrder.map(mon=>{
+      const shares = fullYears.map(yr=>{
+        const total = monthOrder.reduce((s,m)=>s+byYear[yr][m],0);
+        return total>0 ? byYear[yr][mon]/total*100 : 0;
+      });
+      return shares.length ? shares.reduce((a,b)=>a+b,0)/shares.length : 0;
+    });
+  }
+  const jgcSeasonPct = seasonality(data.jgcMiles, data.monthLabels);
+  const truckSeasonPct = seasonality(data.truckMiles, data.monthLabels);
+
+  // Cumulative maintenance-by-year (actual + scheduled), grouped by the sheet's
+  // own year column; synthetic backfilled items get an estimated year instead.
+  function cumulativeByYear(itemsFull, currentMi, pace){
+    const byYear = {};
+    itemsFull.forEach(i=>{
+      let yr = i.year;
+      if(yr==null) yr = Math.round(estDate(today, currentMi, i.mi, pace).year);
+      byYear[yr] = (byYear[yr]||0) + i.cost;
+    });
+    const years = Object.keys(byYear).map(Number);
+    const minYear = Math.min(today.getFullYear()-3, ...years);
+    const maxYear = Math.max(today.getFullYear()+14, ...years);
+    const out = []; let running = 0;
+    for(let y=minYear; y<=maxYear; y++){
+      running += byYear[y]||0;
+      out.push(running);
+    }
+    return {years:Array.from({length:maxYear-minYear+1},(_,i)=>minYear+i), cum:out};
+  }
+  const jgcCum = cumulativeByYear(jgcItemsFull, data.jgcCurrentMi, jgcPace);
+  const truckCum = cumulativeByYear(truckItemsFull, data.truckCurrentMi, truckPace);
+  const maintYearsCommon = jgcCum.years.length>=truckCum.years.length ? jgcCum.years : truckCum.years;
+  function reindex(src){
+    return maintYearsCommon.map(y=>{
+      const idx = src.years.indexOf(y);
+      if(idx>=0) return src.cum[idx];
+      return y<src.years[0] ? 0 : src.cum[src.cum.length-1];
+    });
+  }
+
+  // Driving-split eras: before the truck swap vs. the trailing 12 months (this
+  // generalizes cleanly as more months accumulate beyond the swap).
+  let eras = null;
+  const swapIdx = data.truckSwapIndex;
+  if(swapIdx!=null && swapIdx>0 && swapIdx<data.monthLabels.length){
+    function shareStats(jgcSlice, truckSlice){
+      const jgcTotal = jgcSlice.reduce((a,b)=>a+b,0), truckTotal = truckSlice.reduce((a,b)=>a+b,0);
+      const months = jgcSlice.length, total = jgcTotal+truckTotal;
+      return {
+        jgcPct: total? Math.round(jgcTotal/total*100):0, truckPct: total? Math.round(truckTotal/total*100):0,
+        jgcPerYr: Math.round(jgcTotal/months*12), truckPerYr: Math.round(truckTotal/months*12)
+      };
+    }
+    const era1 = shareStats(data.jgcMiles.slice(0,swapIdx), data.truckMiles.slice(0,swapIdx));
+    const trailingStart = Math.max(0, data.monthLabels.length-12);
+    const era2 = shareStats(data.jgcMiles.slice(trailingStart), data.truckMiles.slice(trailingStart));
+    eras = {
+      era1Label: data.monthLabels[0]+' to '+data.monthLabels[swapIdx-1]+' (old truck)',
+      era2Label: data.monthLabels[trailingStart]+' to '+data.monthLabels[data.monthLabels.length-1]+' (current truck)',
+      era1, era2
+    };
+  }
+
+  return {
+    today, jgcPace, truckPace, paceWindowLabel, gasPrices, gasIsEstimated, trailingAvgGas,
+    jgcItemsFull, truckItemsFull, jgcFuture, truckFuture, truckOverdue,
+    jgcForwardCpm, truckForwardCpm, jgcSeasonPct, truckSeasonPct,
+    maintYears: maintYearsCommon, jgcCumMaint: reindex(jgcCum), truckCumMaint: reindex(truckCum),
+    eras
+  };
+}
+
+/* ---------- current data + chart instances (recreated on every render) ---------- */
+let CURRENT_DATA = loadStoredData() || DEFAULT_DATA;
+let D = computeDerived(CURRENT_DATA);
+const charts = {}; // named Chart.js instances, destroyed+recreated on reload
+function destroyChart(name){ if(charts[name]){ charts[name].destroy(); charts[name]=null; } }
+function parseLabel(lab){ const [mon,yr] = lab.split(' '); return {year:Number(yr), month:MONTH_NAMES.indexOf(mon)}; }
+function rollingAvg(arr, window=3){
+  return arr.map((_,i)=>{
+    const start = Math.max(0, i-window+1);
+    const slice = arr.slice(start, i+1);
+    return slice.reduce((a,b)=>a+b,0)/slice.length;
+  });
+}
+
+/* ==========================================================================
+   RENDER LAYER -- every function here reads CURRENT_DATA/D (module-level,
+   reassigned on each successful file load) and is safe to call again after
+   a reload. renderAll() is the single entry point; it's called once on page
+   load and again every time a new MILES.xlsx is parsed.
+   ========================================================================== */
+
+function renderHeaderBits(){
+  const lastLabel = CURRENT_DATA.monthLabels[CURRENT_DATA.monthLabels.length-1];
+  document.getElementById('heroTag').textContent = "Nick's Garage · through "+lastLabel;
+  document.getElementById('dashFooter').textContent = CURRENT_DATA.loadedAt
+    ? ('Built from '+CURRENT_DATA.sourceLabel+', loaded '+new Date(CURRENT_DATA.loadedAt).toLocaleString()+'.')
+    : 'Built from MILES.xlsx.';
+  document.getElementById('maintFooter').textContent =
+    "Forward cost/mile uses each vehicle's scheduled maintenance from today's odometer forward, plus fuel at the trailing 12-month average price (about $"+D.trailingAvgGas.toFixed(2)+"/gal), not the historical blended average, since sunk repairs don't affect the replace-or-keep decision.";
+}
+
+function renderStatBar(){
+  const combinedGas = (D.jgcPace/CURRENT_DATA.jgcMpg + D.truckPace/CURRENT_DATA.truckMpg)*D.trailingAvgGas;
+  document.getElementById('statGas').textContent = '$'+Math.round(combinedGas).toLocaleString();
+  const truckShare = Math.round(D.truckPace/(D.jgcPace+D.truckPace)*100);
+  document.getElementById('statSplit').textContent = truckShare+'%';
+  document.getElementById('photoJeepCap').textContent =
+    `~${Math.round(D.jgcPace).toLocaleString()} mi/yr now, light duty, low cost per mile.`;
+  document.getElementById('photoTruckCap').textContent =
+    `~${Math.round(D.truckPace).toLocaleString()} mi/yr now, carrying most of the household's miles.`;
+  document.getElementById('cpmDashJgcOut').textContent = '$'+D.jgcForwardCpm.toFixed(2)+'/mi';
+  document.getElementById('cpmDashTruckOut').textContent = '$'+D.truckForwardCpm.toFixed(2)+'/mi';
+}
+
+function renderDrivingSplit(){
+  const tbl = document.getElementById('drivingSplitTable');
+  const lede = document.getElementById('drivingSplitLede');
+  const insight = document.getElementById('drivingSplitInsight');
+  if(!D.eras){
+    tbl.innerHTML = '<tr><th></th><th class="num">Jeep</th><th class="num">Truck</th></tr>';
+    lede.textContent = "No vehicle swap detected yet in the odometer log; once one shows up (a big drop in a vehicle's column between two months), this splits into a before/after comparison automatically.";
+    insight.textContent = 'Nothing to compare yet.';
+    return;
+  }
+  const e = D.eras;
+  tbl.innerHTML = '<tr><th></th><th class="num">Jeep</th><th class="num">Truck</th></tr>'+
+    `<tr><td>${e.era1Label}</td><td class="num odo">${e.era1.jgcPct}% · ~${e.era1.jgcPerYr.toLocaleString()} mi/yr</td><td class="num odo">${e.era1.truckPct}% · ~${e.era1.truckPerYr.toLocaleString()} mi/yr</td></tr>`+
+    `<tr><td>${e.era2Label}</td><td class="num odo">${e.era2.jgcPct}% · ~${e.era2.jgcPerYr.toLocaleString()} mi/yr</td><td class="num odo">${e.era2.truckPct}% · ~${e.era2.truckPerYr.toLocaleString()} mi/yr</td></tr>`;
+  lede.textContent = "Same two vehicles, a completely different division of labor before and after the truck swap.";
+  const flipped = e.era2.truckPct > e.era1.truckPct;
+  insight.innerHTML = `<strong>${flipped ? 'The driving split has flipped' : 'The driving split has held steady'}.</strong> Before the swap, the Jeep carried ${e.era1.jgcPct}% of household miles versus the old truck's ${e.era1.truckPct}%. Since then, the truck carries ${e.era2.truckPct}%, moving from about ${e.era1.truckPerYr.toLocaleString()} mi/yr to ${e.era2.truckPerYr.toLocaleString()} mi/yr, while the Jeep moved from about ${e.era1.jgcPerYr.toLocaleString()} mi/yr to roughly ${e.era2.jgcPerYr.toLocaleString()} mi/yr.`;
+}
+
+function renderMilesChart(){
+  const jgcTrend = rollingAvg(CURRENT_DATA.jgcMiles);
+  const truckTrend = rollingAvg(CURRENT_DATA.truckMiles);
+  const PROJECT_MONTHS = 24;
+  const last = parseLabel(CURRENT_DATA.monthLabels[CURRENT_DATA.monthLabels.length-1]);
+  const futureLabels = [];
+  { let y=last.year, m=last.month+1;
+    for(let i=0;i<PROJECT_MONTHS;i++){
+      if(m>11){ m=0; y++; }
+      futureLabels.push(MONTH_NAMES[m]+' '+y);
+      m++;
+    }
+  }
+  const allLabels = CURRENT_DATA.monthLabels.concat(futureLabels);
+  const jgcMonthlyPace = D.jgcPace/12, truckMonthlyPace = D.truckPace/12;
+  const jgcHistSeries = jgcTrend.concat(futureLabels.map(()=>null));
+  const truckHistSeries = truckTrend.concat(futureLabels.map(()=>null));
+  const n = CURRENT_DATA.monthLabels.length;
+  const jgcProjSeries = CURRENT_DATA.monthLabels.map((_,i)=> i===n-1 ? jgcTrend[i] : null).concat(futureLabels.map(()=>jgcMonthlyPace));
+  const truckProjSeries = CURRENT_DATA.monthLabels.map((_,i)=> i===n-1 ? truckTrend[i] : null).concat(futureLabels.map(()=>truckMonthlyPace));
+
+  destroyChart('miles');
+  charts.miles = new Chart(document.getElementById('milesChart'), {
+    type:'line',
+    data:{labels:allLabels, datasets:[
+      {label:'Jeep (3-mo avg)', data:jgcHistSeries, borderColor:'#C6303A', pointRadius:0, borderWidth:2, tension:0.25},
+      {label:'Jeep projected', data:jgcProjSeries, borderColor:'#C6303A', borderDash:[6,4], pointRadius:0, borderWidth:2, tension:0},
+      {label:'Truck (3-mo avg)', data:truckHistSeries, borderColor:'#80868D', pointRadius:0, borderWidth:2, tension:0.25},
+      {label:'Truck projected', data:truckProjSeries, borderColor:'#80868D', borderDash:[6,4], pointRadius:0, borderWidth:2, tension:0}
+    ]},
+    options:{responsive:true, plugins:{legend:{labels:{color:'#EDEAE4', font:chartFont}}},
+      scales:{x:{grid:{color:gridColor}, ticks:{maxTicksLimit:10}},
+              y:{grid:{color:gridColor}, title:{display:true,text:'Miles/mo',color:inkDim,font:chartFont}}}}
+  });
+  document.getElementById('paceNote').textContent =
+    `Current pace: Jeep ${Math.round(D.jgcPace).toLocaleString()} mi/yr (${Math.round(jgcMonthlyPace)} mi/mo), Truck ${Math.round(D.truckPace).toLocaleString()} mi/yr (${Math.round(truckMonthlyPace)} mi/mo), each averaged over ${D.paceWindowLabel} since the last time driving habits actually shifted, not a strict trailing 12 months, so one unusually high or low month doesn't get compounded across a 10-20 year projection.`;
+}
+
+function renderGasChart(){
+  const jgcMonthlyGas = CURRENT_DATA.jgcMiles.map((m,i)=>m/CURRENT_DATA.jgcMpg*D.gasPrices[i]);
+  const truckMonthlyGas = CURRENT_DATA.truckMiles.map((m,i)=>m/CURRENT_DATA.truckMpg*D.gasPrices[i]);
+  const byYear = {};
+  CURRENT_DATA.monthLabels.forEach((lab,i)=>{
+    const yr = parseLabel(lab).year;
+    byYear[yr] = byYear[yr] || {jgc:0, truck:0, count:0};
+    byYear[yr].jgc += jgcMonthlyGas[i];
+    byYear[yr].truck += truckMonthlyGas[i];
+    byYear[yr].count++;
+  });
+  const years = Object.keys(byYear).map(Number).sort((a,b)=>a-b);
+  const labels = years.map(y => byYear[y].count<12 ? y+' (YTD)' : String(y));
+
+  destroyChart('gas');
+  charts.gas = new Chart(document.getElementById('gasChart'), {
+    type:'bar',
+    data:{labels, datasets:[
+      {label:'Jeep', data:years.map(y=>Math.round(byYear[y].jgc)), backgroundColor:'#C6303A', stack:'g'},
+      {label:'Truck', data:years.map(y=>Math.round(byYear[y].truck)), backgroundColor:'#80868D', stack:'g'}
+    ]},
+    options:{responsive:true, plugins:{legend:{labels:{color:'#EDEAE4', font:chartFont}}},
+      scales:{x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, stacked:true, ticks:{callback:v=>'$'+v}}}}
+  });
+  const estimatedMonths = D.gasIsEstimated.filter(Boolean).length;
+  document.getElementById('gasChartNote').textContent = estimatedMonths
+    ? `${labels[labels.length-1]} includes ${estimatedMonths} month(s) priced at your workbook's flat $${CURRENT_DATA.avgGasPrice}/gal assumption (no logged Seattle price yet that far out), not actual local pricing.`
+    : `${labels[labels.length-1]} may be a partial year, based on logged Seattle-area prices.`;
+}
+
+function renderSeasonChart(){
+  const seasonMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  destroyChart('season');
+  charts.season = new Chart(document.getElementById('seasonChart'), {
+    type:'bar',
+    data:{labels:seasonMonths, datasets:[
+      {label:'Jeep, % of its annual miles', data:D.jgcSeasonPct, backgroundColor:'#C6303A'},
+      {label:'Truck, % of its annual miles', data:D.truckSeasonPct, backgroundColor:'#80868D'}
+    ]},
+    options:{responsive:true, plugins:{legend:{labels:{color:'#EDEAE4', font:chartFont}}},
+      scales:{x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, title:{display:true,text:'% of annual mileage',color:inkDim,font:chartFont}}}}
+  });
+  function peak(pct){ let i=0; pct.forEach((v,idx)=>{ if(v>pct[i]) i=idx; }); return {month:seasonMonths[i], pct:pct[i]}; }
+  function trough(pct){ let i=0; pct.forEach((v,idx)=>{ if(v<pct[i]) i=idx; }); return {month:seasonMonths[i], pct:pct[i]}; }
+  const jgcPeak = peak(D.jgcSeasonPct), jgcTrough = trough(D.jgcSeasonPct);
+  const truckPeak = peak(D.truckSeasonPct), truckTrough = trough(D.truckSeasonPct);
+  document.getElementById('seasonInsight1').innerHTML =
+    `<strong>The Jeep and the truck peak in different seasons.</strong> The Jeep's heaviest month is ${jgcPeak.month} at ${jgcPeak.pct.toFixed(1)}% of its annual miles, versus a low in ${jgcTrough.month} at ${jgcTrough.pct.toFixed(1)}%. The truck's heaviest month is ${truckPeak.month} at ${truckPeak.pct.toFixed(1)}%, versus a low in ${truckTrough.month} at ${truckTrough.pct.toFixed(1)}%.`;
+  document.getElementById('seasonInsight2').innerHTML =
+    `<strong>${truckPeak.month} is the truck's busiest month.</strong> At ${truckPeak.pct.toFixed(1)}% of its annual mileage, versus an even 8.3% if usage were flat all year, that's real seasonal demand. If a tire or brake service is coming due heading into that stretch, it's worth scheduling it a month or two early, before demand on the truck ramps up.`;
+}
+
+function renderCumMaintChart(){
+  destroyChart('cumMaint');
+  charts.cumMaint = new Chart(document.getElementById('cumMaintChart'), {
+    type:'line',
+    data:{labels:D.maintYears, datasets:[
+      {label:'Jeep cumulative maintenance', data:D.jgcCumMaint, borderColor:'#C6303A', backgroundColor:'rgba(198,48,58,0.10)', fill:true, stepped:true, pointRadius:0, borderWidth:2},
+      {label:'Truck cumulative maintenance', data:D.truckCumMaint, borderColor:'#80868D', backgroundColor:'rgba(128,134,141,0.10)', fill:true, stepped:true, pointRadius:0, borderWidth:2}
+    ]},
+    options:{responsive:true, plugins:{legend:{labels:{color:'#EDEAE4', font:chartFont}}, title:{display:true, text:'Cumulative maintenance spend, actual + scheduled', color:'#EDEAE4', font:{family:"'Zilla Slab', serif", size:13}}},
+      scales:{x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, ticks:{callback:v=>'$'+v}}}}
+  });
+}
+
+/* ---------- KEEP VS REPLACE ---------- */
+function renderKeep(){
+  const horizon = parseFloat(document.getElementById('hzSlider').value);
+  const suvCost = parseFloat(document.getElementById('rcSuvSlider').value);
+  const truckCost = parseFloat(document.getElementById('rcTruckSlider').value);
+  document.getElementById('hzVal').textContent = horizon + ' years';
+  document.getElementById('rcSuvVal').textContent = '$'+suvCost.toLocaleString();
+  document.getElementById('rcTruckVal').textContent = '$'+truckCost.toLocaleString();
+  document.getElementById('cpmJgcOut').textContent = '$'+D.jgcForwardCpm.toFixed(2)+'/mi';
+  document.getElementById('cpmTruckOut').textContent = '$'+D.truckForwardCpm.toFixed(2)+'/mi';
+
+  const jgcReplaceCpm = suvCost/(horizon*D.jgcPace);
+  const f150ReplaceCpm = truckCost/(horizon*D.truckPace);
+
+  destroyChart('keepJgc'); destroyChart('keepF150');
+  charts.keepJgc = new Chart(document.getElementById('keepJgc'), {type:'bar',
+    data:{labels:['Keep the Jeep','Replace it'], datasets:[{data:[D.jgcForwardCpm,jgcReplaceCpm], backgroundColor:['#C6303A','#4A4A4D']}]},
+    options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}, title:{display:true,text:'Jeep, cost per mile',color:'#EDEAE4',font:{family:"'Zilla Slab', serif", size:13}}},
+      scales:{x:{grid:{color:gridColor}, ticks:{callback:v=>'$'+v.toFixed(2)}}, y:{grid:{display:false}}}}});
+  charts.keepF150 = new Chart(document.getElementById('keepF150'), {type:'bar',
+    data:{labels:['Keep the truck','Replace it'], datasets:[{data:[D.truckForwardCpm,f150ReplaceCpm], backgroundColor:['#80868D','#4A4A4D']}]},
+    options:{indexAxis:'y', responsive:true, plugins:{legend:{display:false}, title:{display:true,text:'F-150, cost per mile',color:'#EDEAE4',font:{family:"'Zilla Slab', serif", size:13}}},
+      scales:{x:{grid:{color:gridColor}, ticks:{callback:v=>'$'+v.toFixed(2)}}, y:{grid:{display:false}}}}});
+
+  const jgcWin = D.jgcForwardCpm < jgcReplaceCpm;
+  const f150Win = D.truckForwardCpm < f150ReplaceCpm;
+  document.getElementById('jgcVerdictNum').textContent = jgcWin ? 'Keep' : 'Replace';
+  document.getElementById('jgcVerdictNum').style.color = jgcWin ? '#80868D' : '#C6303A';
+  document.getElementById('jgcVerdictTxt').textContent = `$${D.jgcForwardCpm.toFixed(2)}/mi to keep vs $${jgcReplaceCpm.toFixed(2)}/mi to replace at this horizon`;
+
+  document.getElementById('f150VerdictNum').textContent = f150Win ? 'Keep' : 'Replace';
+  document.getElementById('f150VerdictNum').style.color = f150Win ? '#80868D' : '#C6303A';
+  document.getElementById('f150VerdictTxt').textContent = `$${D.truckForwardCpm.toFixed(2)}/mi to keep vs $${f150ReplaceCpm.toFixed(2)}/mi to replace at this horizon`;
+
+  const jgcBreakeven = suvCost/(D.jgcPace*D.jgcForwardCpm);
+  const f150Breakeven = truckCost/(D.truckPace*D.truckForwardCpm);
+  document.getElementById('keepBreakevenNote').textContent =
+    `Breakeven horizon: ${jgcBreakeven.toFixed(1)} years for the Jeep at $${suvCost.toLocaleString()}, ${f150Breakeven.toFixed(1)} years for the truck at $${truckCost.toLocaleString()}. Below that horizon, keeping wins; above it, replacing does.`;
+}
+['hzSlider','rcSuvSlider','rcTruckSlider'].forEach(id=>document.getElementById(id).addEventListener('input', renderKeep));
+
+/* ---------- UPCOMING MAINTENANCE (plain schedule table + next-3-years cost tiles) ---------- */
+function renderScheduleTable(tableId, tilesId, items, currentMi, pace){
+  const table = document.getElementById(tableId);
+  table.innerHTML = '<tr><th>Mileage</th><th>Item</th><th>Est. date</th><th class="num">Cost</th></tr>';
+  const groups = {};
+  items.forEach(i=>{
+    const est = estDate(D.today, currentMi, i.mi, pace);
+    const yr = Math.round(est.year);
+    groups[yr] = groups[yr] || {items:[], total:0};
+    groups[yr].items.push(Object.assign({}, i, {est}));
+    groups[yr].total += i.cost;
+  });
+  const sortedYears = Object.keys(groups).map(Number).sort((a,b)=>a-b);
+  sortedYears.forEach(yr=>{
+    groups[yr].items.forEach(i=>{
+      table.innerHTML += `<tr><td class="odo">${i.mi.toLocaleString()}</td><td>${i.item}${i.synthetic?' *':''}</td><td>~${i.est.label}</td><td class="num">$${i.cost.toLocaleString()}</td></tr>`;
+    });
+  });
+
+  const tiles = document.getElementById(tilesId);
+  tiles.innerHTML = sortedYears.slice(0,3).map(yr =>
+    `<div class="year-tile"><div class="yr">${yr}</div><div class="amt">$${Math.round(groups[yr].total).toLocaleString()}</div></div>`
+  ).join('');
+}
+
+function renderUpcomingMaintenance(){
+  const jgcUpcoming = D.jgcFuture;
+  const truckUpcoming = D.truckFuture.filter(i=>i.mi>CURRENT_DATA.truckCurrentMi);
+
+  const jgcNext = jgcUpcoming[0];
+  const jgcNextEst = estDate(D.today, CURRENT_DATA.jgcCurrentMi, jgcNext.mi, D.jgcPace);
+  document.getElementById('jgcNextWho').innerHTML =
+    `${jgcNext.item} at ${jgcNext.mi.toLocaleString()} mi<br>` +
+    `<span class="odo" style="color:#C6303A">~${jgcNextEst.label}</span> &middot; ${Math.round(jgcNextEst.milesAway).toLocaleString()} mi away &middot; $${jgcNext.cost.toLocaleString()}`;
+
+  const truckNext = truckUpcoming[0];
+  const truckNextEst = estDate(D.today, CURRENT_DATA.truckCurrentMi, truckNext.mi, D.truckPace);
+  document.getElementById('truckNextWho').innerHTML =
+    `${truckNext.item} at ${truckNext.mi.toLocaleString()} mi<br>` +
+    `<span class="odo" style="color:#C6303A">~${truckNextEst.label}</span> &middot; ${Math.round(truckNextEst.milesAway).toLocaleString()} mi away &middot; $${truckNext.cost.toLocaleString()}`;
+
+  if(D.truckOverdue.length){
+    const items = D.truckOverdue.map(i=>`${i.item} at ${i.mi.toLocaleString()} mi`).join(', ');
+    document.getElementById('truckOverdueInsight').style.display = 'block';
+    document.getElementById('truckOverdueInsight').innerHTML =
+      `<strong>The truck has already passed a scheduled service point.</strong> At ${CURRENT_DATA.truckCurrentMi.toLocaleString()} mi, it's already gone by: ${items}. Worth checking whether that was actually done, since the pace it's being driven at now is faster than the original schedule assumed.`;
+  } else {
+    document.getElementById('truckOverdueInsight').style.display = 'none';
+  }
+
+  renderScheduleTable('jgcScheduleTable', 'jgcScheduleTiles', jgcUpcoming, CURRENT_DATA.jgcCurrentMi, D.jgcPace);
+  renderScheduleTable('truckScheduleTable', 'truckScheduleTiles', truckUpcoming, CURRENT_DATA.truckCurrentMi, D.truckPace);
+
+  const jgc125 = estDate(D.today, CURRENT_DATA.jgcCurrentMi, 125000, D.jgcPace);
+  const jgc150 = estDate(D.today, CURRENT_DATA.jgcCurrentMi, 150000, D.jgcPace);
+  const truck150 = estDate(D.today, CURRENT_DATA.truckCurrentMi, 150000, D.truckPace);
+  document.getElementById('mileageWindowInsight').innerHTML =
+    `<strong>At current pace, the Jeep's window is far later than the truck's.</strong> The Jeep is only covering about ${Math.round(D.jgcPace).toLocaleString()} mi/yr right now, so 125,000 miles doesn't arrive until roughly ${jgc125.label}, and 150,000 not until roughly ${jgc150.label}. The truck, at about ${Math.round(D.truckPace).toLocaleString()} mi/yr, reaches its 150,000-mile target much sooner, around ${truck150.label}.`;
+
+  return {jgc125, jgc150, truck150};
+}
+
+/* ---------- FINANCE: REPLACEMENT-TIMING SIMULATION ---------- */
+function simulateBalance({r, monthly, lump=0, lumpYear=0, suvCost, suvYear, truckCost, truckYear, cycle, startYear=2025, endYear=2050, stopYear=0}){
+  const track = {}, events = [];
+  track[startYear] = 15200;
+  for(let y=startYear+1; y<=endYear; y++){
+    const contributing = !stopYear || y<=stopYear;
+    let val = track[y-1]*(1+r) + (contributing ? monthly*12 : 0);
+    if(y === lumpYear) val += lump;
+    let hitSuv = (y===suvYear) || (y>suvYear && (y-suvYear)%cycle===0);
+    let hitTruck = (y===truckYear) || (y>truckYear && (y-truckYear)%cycle===0);
+    if(hitSuv) val -= suvCost;
+    if(hitTruck) val -= truckCost;
+    track[y] = val;
+    if(hitSuv) events.push({year:y, val, type:'suv'});
+    if(hitTruck) events.push({year:y, val, type:'truck'});
+  }
+  return {track, events};
+}
+
+const spReturns2026 = [0.015,-0.009,-0.049,0.105,0.053,-0.010,0.001,0.030];
+let fundBal = 15200;
+spReturns2026.forEach(r=>{ fundBal = (fundBal+300)*(1+r); });
+const CURRENT_BALANCE = Math.round(fundBal); // ~19,887
+const SIM_RETURN = 0.10;
+
+function renderTimingCompare(mileageWindow){
+  const cmpJgcYearEarly = Math.round(mileageWindow.jgc125.year);
+  const cmpJgcYearLate = Math.round(mileageWindow.jgc150.year);
+  const cmpJgcYearMid = Math.round((cmpJgcYearEarly+cmpJgcYearLate)/2);
+  const cmpTruckYear = Math.round(mileageWindow.truck150.year);
+  const cmpEndYear = cmpJgcYearLate + 4;
+
+  document.getElementById('timingCompareLede').textContent =
+    `The truck hits its 150k target around ${cmpTruckYear} at its current pace. The Jeep's 125k to 150k window, at its own current pace, spans roughly ${cmpJgcYearEarly} to ${cmpJgcYearLate}. These three lines hold the truck fixed and only move the Jeep across that window, at the same $300/mo contribution and a flat 10% return.`;
+
+  const cmpYears = Array.from({length:Math.max(1,cmpEndYear-2025+1)}, (_,i)=>2025+i);
+  const cmpEarly = simulateBalance({r:0.10, monthly:300, suvCost:50000, suvYear:cmpJgcYearEarly, truckCost:65000, truckYear:cmpTruckYear, cycle:10, endYear:cmpEndYear}).track;
+  const cmpBase  = simulateBalance({r:0.10, monthly:300, suvCost:50000, suvYear:cmpJgcYearMid, truckCost:65000, truckYear:cmpTruckYear, cycle:10, endYear:cmpEndYear}).track;
+  const cmpLate  = simulateBalance({r:0.10, monthly:300, suvCost:50000, suvYear:cmpJgcYearLate, truckCost:65000, truckYear:cmpTruckYear, cycle:10, endYear:cmpEndYear}).track;
+
+  destroyChart('timingCompare');
+  charts.timingCompare = new Chart(document.getElementById('timingCompareChart'), {
+    type:'line',
+    data:{labels:cmpYears, datasets:[
+      {label:`Jeep at 125k ('${String(cmpJgcYearEarly).slice(2)}) / Truck at 150k ('${String(cmpTruckYear).slice(2)})`, data:cmpYears.map(y=>cmpEarly[y]), borderColor:'#C6303A', pointRadius:0, borderWidth:2, tension:0.1},
+      {label:`Jeep mid-window ('${String(cmpJgcYearMid).slice(2)}) / Truck at 150k ('${String(cmpTruckYear).slice(2)})`, data:cmpYears.map(y=>cmpBase[y]), borderColor:'#8C4B4E', pointRadius:0, borderWidth:2, tension:0.1},
+      {label:`Jeep at 150k ('${String(cmpJgcYearLate).slice(2)}) / Truck at 150k ('${String(cmpTruckYear).slice(2)})`, data:cmpYears.map(y=>cmpLate[y]), borderColor:'#80868D', pointRadius:0, borderWidth:2, tension:0.1},
+      {label:'Zero', data:cmpYears.map(()=>0), borderColor:'#4A4A4D', borderDash:[3,3], pointRadius:0, borderWidth:1}
+    ]},
+    options:{responsive:true, plugins:{legend:{labels:{color:'#EDEAE4', font:chartFont}}},
+      scales:{x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, ticks:{callback:v=>'$'+(v/1000)+'k'}}}}
+  });
+
+  const cmpEarlyMin = Math.round(Math.min(...cmpYears.map(y=>cmpEarly[y])));
+  const cmpLateMin = Math.round(Math.min(...cmpYears.map(y=>cmpLate[y])));
+  document.getElementById('timingCompareInsight').innerHTML =
+    `<strong>At today's $300/mo contribution, replacing the Jeep at the early end of its window costs noticeably more than waiting.</strong> Land the Jeep at 125k (around ${cmpJgcYearEarly}) and the balance's low point runs about $${Math.abs(cmpEarlyMin).toLocaleString()} ${cmpEarlyMin<0?'short':'to the good'}. Wait for 150k (around ${cmpJgcYearLate}) instead and the low point improves to about $${Math.abs(cmpLateMin).toLocaleString()} ${cmpLateMin<0?'short':'to the good'}, because those extra years of compounding do real work. The truck's purchase around ${cmpTruckYear} is the nearer-term event either way.`;
+}
+
+/* ---------- Custom simulator ---------- */
+const simIds = ['fmSlider','flSlider','fySlider','suvcSlider','suvySlider','truckcSlider','truckySlider','cycSlider'];
+
+document.getElementById('lumpToggle').addEventListener('change', (e)=>{
+  document.getElementById('lumpControls').style.display = e.target.checked ? 'grid' : 'none';
+  renderSim();
+});
+
+function renderSim(){
+  const monthly = parseFloat(document.getElementById('fmSlider').value);
+  const lumpOn = document.getElementById('lumpToggle').checked;
+  const lump = lumpOn ? parseFloat(document.getElementById('flSlider').value) : 0;
+  const lumpYear = lumpOn ? parseInt(document.getElementById('fySlider').value) : 0;
+  const suvCost = parseFloat(document.getElementById('suvcSlider').value);
+  const suvYear = parseInt(document.getElementById('suvySlider').value);
+  const truckCost = parseFloat(document.getElementById('truckcSlider').value);
+  const truckYear = parseInt(document.getElementById('truckySlider').value);
+  const cycle = parseInt(document.getElementById('cycSlider').value);
+
+  document.getElementById('fmVal').textContent = '$'+monthly.toLocaleString()+'/mo';
+  document.getElementById('flVal').textContent = '$'+lump.toLocaleString();
+  document.getElementById('fyVal').textContent = lumpYear || '';
+  document.getElementById('suvcVal').textContent = '$'+suvCost.toLocaleString();
+  document.getElementById('suvyVal').textContent = suvYear;
+  document.getElementById('truckcVal').textContent = '$'+truckCost.toLocaleString();
+  document.getElementById('truckyVal').textContent = truckYear;
+  document.getElementById('cycVal').textContent = cycle+' years';
+
+  const nowYear = D.today.getFullYear();
+  const emVal = "style=\"color:var(--brass);font-family:'IBM Plex Mono',monospace;\"";
+
+  const jgcYearsAtTarget = suvYear - CURRENT_DATA.jgcLastReplacedYear;
+  const jgcEstMilesAtTarget = Math.round(CURRENT_DATA.jgcCurrentMi + D.jgcPace*Math.max(0, suvYear-nowYear));
+  document.getElementById('jgcCombinedNote').innerHTML =
+    `Last replaced <span ${emVal}>${CURRENT_DATA.jgcLastReplacedYear}</span>, by <span ${emVal}>${suvYear}</span> that's <span ${emVal}>${jgcYearsAtTarget} yr${jgcYearsAtTarget===1?'':'s'}</span>, roughly <span ${emVal}>${jgcEstMilesAtTarget.toLocaleString()} mi</span>.`;
+
+  const truckYearsAtTarget = truckYear - CURRENT_DATA.truckLastReplacedYear;
+  const truckEstMilesAtTarget = Math.round(CURRENT_DATA.truckCurrentMi + D.truckPace*Math.max(0, truckYear-nowYear));
+  document.getElementById('truckCombinedNote').innerHTML =
+    `Last replaced <span ${emVal}>${CURRENT_DATA.truckLastReplacedYear}</span>, by <span ${emVal}>${truckYear}</span> that's <span ${emVal}>${truckYearsAtTarget} yr${truckYearsAtTarget===1?'':'s'}</span>, roughly <span ${emVal}>${truckEstMilesAtTarget.toLocaleString()} mi</span>.`;
+
+  const suvReplaceCpm = suvCost/(cycle*D.jgcPace);
+  const truckReplaceCpm = truckCost/(cycle*D.truckPace);
+  document.getElementById('cpmFinSuvOut').textContent = '$'+suvReplaceCpm.toFixed(2)+'/mi';
+  document.getElementById('cpmFinSuvSub').textContent = `$${suvCost.toLocaleString()} over ${cycle} yr${cycle===1?'':'s'} at ~${Math.round(D.jgcPace).toLocaleString()} mi/yr (the Jeep's current pace)`;
+  document.getElementById('cpmFinTruckOut').textContent = '$'+truckReplaceCpm.toFixed(2)+'/mi';
+  document.getElementById('cpmFinTruckSub').textContent = `$${truckCost.toLocaleString()} over ${cycle} yr${cycle===1?'':'s'} at ~${Math.round(D.truckPace).toLocaleString()} mi/yr (the truck's current pace)`;
+
+  const endYear = Math.min(Math.max(suvYear, truckYear) + cycle*2, 2070);
+  const {track, events} = simulateBalance({r:SIM_RETURN, monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle, endYear});
+  const years = Object.keys(track).map(Number);
+  const vals = years.map(y=>track[y]);
+
+  const minVal = Math.min(...vals);
+  const minYear = years[vals.indexOf(minVal)];
+  document.getElementById('minBalOut').textContent = (minVal<0?'-$':'$') + Math.abs(Math.round(minVal)).toLocaleString();
+  document.getElementById('minBalOut').style.color = minVal<0 ? '#C6303A' : '#80868D';
+  document.getElementById('minBalTxt').textContent = minVal<0
+    ? `lowest point through ${minYear} if you keep contributing every month without stopping; this plan runs a shortfall and would need financing or a bigger contribution.`
+    : `lowest point through ${minYear} if you keep contributing every month without stopping; the fund stays positive throughout on this plan.`;
+
+  const eventPoints = years.map(y=>{
+    const ev = events.find(e=>e.year===y);
+    return ev ? ev.val : null;
+  });
+
+  const data = {labels:years, datasets:[
+    {label:'Projected balance', data:vals, borderColor:'#C6303A', backgroundColor:'rgba(198,48,58,0.10)', fill:true, pointRadius:0, borderWidth:2, tension:0.1},
+    {label:'Replacement purchase', data:eventPoints, borderColor:'transparent', backgroundColor:'#C6303A', pointRadius:5, pointStyle:'circle', showLine:false},
+    {label:'Zero', data:years.map(()=>0), borderColor:'#4A4A4D', borderDash:[2,2], pointRadius:0, borderWidth:1}
+  ]};
+  destroyChart('sim');
+  charts.sim = new Chart(document.getElementById('simChart'), {type:'line', data,
+    options:{responsive:true, plugins:{legend:{labels:{color:'#EDEAE4', font:chartFont}}},
+      scales:{x:{grid:{color:gridColor}}, y:{grid:{color:gridColor}, ticks:{callback:v=>'$'+(v/1000)+'k'}}}}});
+
+  renderMilestones(monthly);
+  renderCourseCorrect(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle);
+}
+
+/* Solvent forever once contributions stop: only checks balance from stopYr onward,
+   not any temporary dip earlier while still actively saving (that near-term cash-flow
+   question is separately covered by the "if you never stop" verdict below). */
+function canStopSafelyAt(stopYr, monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle){
+  const {track} = simulateBalance({r:SIM_RETURN, monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle, endYear:stopYr+60, stopYear:stopYr});
+  const postStop = Object.keys(track).map(Number).filter(y=>y>=stopYr).map(y=>track[y]);
+  return Math.min(...postStop) >= 0;
+}
+
+/* Earliest year, scanning forward from today, at which contributions could safely
+   drop to $0/mo and the plan stays solvent forever after (canStopSafelyAt holds for
+   that year and, by construction, every year after it too, since waiting longer to
+   stop only means more banked contributions and growth). Null if not reached within
+   an 80-year horizon -- e.g. today's vehicle costs are actively running the fund
+   into an unrecoverable shortfall (see the "if you never stop" check below). */
+const SOLVENCY_HORIZON_YEARS = 80;
+function earliestStopYear(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle){
+  const nowYear = D.today.getFullYear();
+  for(let y=nowYear; y<=nowYear+SOLVENCY_HORIZON_YEARS; y++){
+    if(canStopSafelyAt(y, monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle)) return y;
+  }
+  return null;
+}
+
+/* Lever 1: minimum monthly (holding cost & keep-length fixed) that lets the plan
+   reach a safe stop at all within the 80-year horizon. Null if not reachable via
+   this lever alone even at $5,000/mo. */
+function monthlyNeededToStopEver(lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle){
+  const horizonYear = D.today.getFullYear() + SOLVENCY_HORIZON_YEARS;
+  const hi0 = 5000;
+  if(!canStopSafelyAt(horizonYear, hi0, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle)) return null;
+  let lo=0, hi=hi0;
+  for(let i=0;i<40;i++){
+    const mid=(lo+hi)/2;
+    if(canStopSafelyAt(horizonYear, mid, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle)) hi=mid; else lo=mid;
+  }
+  return hi;
+}
+
+/* Lever 2: the scale factor applied to both SUV and truck cost (holding monthly &
+   keep-length fixed) at which the plan reaches a safe stop at all within the
+   horizon. Returns 0 if even free vehicles don't get there; caps at 3x if there's
+   no binding ceiling within a realistic range. */
+function costScaleNeededToStopEver(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle){
+  const horizonYear = D.today.getFullYear() + SOLVENCY_HORIZON_YEARS;
+  const hi0 = 3;
+  if(!canStopSafelyAt(horizonYear, monthly, lump, lumpYear, 0, suvYear, 0, truckYear, cycle)) return 0;
+  if(canStopSafelyAt(horizonYear, monthly, lump, lumpYear, suvCost*hi0, suvYear, truckCost*hi0, truckYear, cycle)) return hi0;
+  let lo=0, hi=hi0;
+  for(let i=0;i<40;i++){
+    const mid=(lo+hi)/2;
+    if(canStopSafelyAt(horizonYear, monthly, lump, lumpYear, suvCost*mid, suvYear, truckCost*mid, truckYear, cycle)) lo=mid; else hi=mid;
+  }
+  return lo;
+}
+
+/* Lever 3: the shortest replace-again cycle (holding monthly & cost fixed) that
+   still reaches a safe stop at all within the horizon. Null if even a 60-year
+   cycle doesn't work. */
+function cycleNeededToStopEver(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear){
+  const horizonYear = D.today.getFullYear() + SOLVENCY_HORIZON_YEARS;
+  for(let c=3;c<=60;c++){
+    if(canStopSafelyAt(horizonYear, monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, c)) return c;
+  }
+  return null;
+}
+
+function renderCourseCorrect(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle){
+  const stopYear = earliestStopYear(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle);
+  const nowYear = D.today.getFullYear();
+
+  // Lever 1 — monthly: compute once, shared by the headline suggestion and the card.
+  const neededMonthlyRaw = monthlyNeededToStopEver(lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle);
+  const neededMonthly = neededMonthlyRaw==null ? null : Math.ceil(neededMonthlyRaw/5)*5;
+  const monthlyUnlockedYear = neededMonthly==null ? null : earliestStopYear(neededMonthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle);
+
+  // Lever 2 — combined vehicle cost
+  const scale = costScaleNeededToStopEver(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, cycle);
+  const combinedCurrent = suvCost + truckCost;
+  let suvNeeded = null, truckNeeded = null, costUnlockedYear = null;
+  if(scale>0 && scale<3){
+    suvNeeded = Math.floor(suvCost*scale/500)*500;
+    truckNeeded = Math.floor(truckCost*scale/500)*500;
+    costUnlockedYear = earliestStopYear(monthly, lump, lumpYear, suvNeeded, suvYear, truckNeeded, truckYear, cycle);
+  }
+
+  // Lever 3 — keep-length (cycle)
+  const neededCycle = cycleNeededToStopEver(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear);
+  const cycleUnlockedYear = neededCycle==null ? null : earliestStopYear(monthly, lump, lumpYear, suvCost, suvYear, truckCost, truckYear, neededCycle);
+
+  // Headline verdict
+  const out = document.getElementById('goalVerdictOut');
+  const txt = document.getElementById('goalVerdictTxt');
+  if(stopYear==null){
+    out.textContent = 'Not yet';
+    out.style.color = 'var(--brass)';
+    const clauses = [];
+    if(neededMonthly!=null && monthlyUnlockedYear!=null){
+      clauses.push(`save $${neededMonthly.toLocaleString()}/mo instead of $${monthly.toLocaleString()}/mo (safe stop by ${monthlyUnlockedYear})`);
+    }
+    if(scale>0 && scale<3 && suvNeeded!=null && costUnlockedYear!=null){
+      clauses.push(`cut combined vehicle spend to about $${(suvNeeded+truckNeeded).toLocaleString()}, roughly $${suvNeeded.toLocaleString()} SUV / $${truckNeeded.toLocaleString()} truck (safe stop by ${costUnlockedYear})`);
+    } else if(scale>=3){
+      clauses.push(`cut vehicle costs; there's a lot of room on this lever alone`);
+    }
+    if(neededCycle!=null && cycleUnlockedYear!=null){
+      clauses.push(`keep each vehicle every ${neededCycle} yrs instead of ${cycle} (safe stop by ${cycleUnlockedYear})`);
+    }
+    txt.innerHTML = clauses.length
+      ? `at today's $${monthly.toLocaleString()}/mo, vehicle costs, and ${cycle}-yr keep-length, this plan never safely reaches $0/mo. Holding everything else exactly where it is today, any ONE of these alone would fix it: ${clauses.join('; or ')}.`
+      : `at today's monthly, vehicle costs, and keep-length, this plan never safely reaches $0/mo, and no single lever fixes it alone within a realistic range (see the "if you never stop" check below for why). It would take moving more than one lever at once.`;
+  } else {
+    const yrsOut = stopYear - nowYear;
+    out.textContent = stopYear;
+    out.style.color = 'var(--truck)';
+    txt.textContent = yrsOut<=0
+      ? `is the earliest year you could drop contributions to $0/mo and coast on growth alone; at today's settings, that's already now.`
+      : `is the earliest year, at today's monthly, vehicle costs, and keep-length, that you could drop contributions to $0/mo and coast on growth alone from there (${yrsOut} year${yrsOut===1?'':'s'} from now).`;
+  }
+
+  // Lever 1 card
+  const monthlyCard = document.getElementById('ccMonthly');
+  const monthlyNeedEl = document.getElementById('ccMonthlyNeed');
+  document.getElementById('ccMonthlyCur').textContent = `Today: $${monthly.toLocaleString()}/mo`;
+  if(neededMonthly==null){
+    monthlyCard.className = 'cc-card warn';
+    monthlyNeedEl.className = 'need warn';
+    monthlyNeedEl.textContent = 'Not with this lever alone';
+    document.getElementById('ccMonthlySub').textContent = `Even $5,000/mo never reaches a safe stop at this cost and keep-length; monthly savings alone can't fix it.`;
+  } else {
+    const good = monthly >= neededMonthly;
+    monthlyCard.className = 'cc-card ' + (good?'good':'warn');
+    monthlyNeedEl.className = 'need ' + (good?'good':'warn');
+    monthlyNeedEl.textContent = `$${neededMonthly.toLocaleString()}/mo`;
+    document.getElementById('ccMonthlySub').textContent = good
+      ? `You're already at or above this floor; could drop as low as $${neededMonthly.toLocaleString()}/mo and still reach a safe stop by ${monthlyUnlockedYear}.`
+      : `Raise it to about $${neededMonthly.toLocaleString()}/mo to reach a safe stop by ${monthlyUnlockedYear}, at your current vehicle costs and keep-length.`;
+  }
+
+  // Lever 2 card
+  const costCard = document.getElementById('ccCost');
+  const costNeedEl = document.getElementById('ccCostNeed');
+  document.getElementById('ccCostCur').textContent = `Today: $${combinedCurrent.toLocaleString()} combined`;
+  if(scale<=0){
+    costCard.className = 'cc-card warn';
+    costNeedEl.className = 'need warn';
+    costNeedEl.textContent = 'Not with this lever alone';
+    document.getElementById('ccCostSub').textContent = `Even free vehicles never reach a safe stop at this monthly and keep-length; vehicle cost alone can't fix it.`;
+  } else if(scale>=3){
+    costCard.className = 'cc-card good';
+    costNeedEl.className = 'need good';
+    costNeedEl.textContent = 'Plenty of room';
+    document.getElementById('ccCostSub').textContent = `You could more than triple combined spend (SUV + truck) and still reach a safe stop${stopYear!=null?' by '+stopYear:''}.`;
+  } else {
+    const combinedNeeded = suvNeeded + truckNeeded;
+    const good = scale>=1;
+    costCard.className = 'cc-card ' + (good?'good':'warn');
+    costNeedEl.className = 'need ' + (good?'good':'warn');
+    costNeedEl.textContent = `$${combinedNeeded.toLocaleString()} combined`;
+    document.getElementById('ccCostSub').textContent = good
+      ? `You have room to spend up to about this much combined (~$${suvNeeded.toLocaleString()} SUV / ~$${truckNeeded.toLocaleString()} truck) and still reach a safe stop by ${costUnlockedYear}.`
+      : `Cut combined spend to about this much (~$${suvNeeded.toLocaleString()} SUV / ~$${truckNeeded.toLocaleString()} truck) to reach a safe stop by ${costUnlockedYear}, at your current monthly and keep-length.`;
+  }
+
+  // Lever 3 card
+  const cycleCard = document.getElementById('ccCycle');
+  const cycleNeedEl = document.getElementById('ccCycleNeed');
+  document.getElementById('ccCycleCur').textContent = `Today: every ${cycle} yrs`;
+  if(neededCycle==null){
+    cycleCard.className = 'cc-card warn';
+    cycleNeedEl.className = 'need warn';
+    cycleNeedEl.textContent = 'Not with this lever alone';
+    document.getElementById('ccCycleSub').textContent = `Even a 60-year cycle never reaches a safe stop at this monthly and cost; keep-length alone can't fix it.`;
+  } else {
+    const good = cycle >= neededCycle;
+    cycleCard.className = 'cc-card ' + (good?'good':'warn');
+    cycleNeedEl.className = 'need ' + (good?'good':'warn');
+    cycleNeedEl.textContent = `every ${neededCycle} yrs`;
+    document.getElementById('ccCycleSub').textContent = good
+      ? `You could replace as often as every ${neededCycle} yrs and still reach a safe stop by ${cycleUnlockedYear}.`
+      : `Keep each vehicle to about every ${neededCycle} yrs (instead of ${cycle}) to reach a safe stop by ${cycleUnlockedYear}, at your current monthly and cost.`;
+  }
+}
+
+function renderMilestones(monthly){
+  const monthlyRate = Math.pow(1.10, 1/12) - 1;
+  const milestoneYears = [1,2,3,5,10,15,20,25];
+  const nowYear = D.today.getFullYear();
+  let bal = CURRENT_BALANCE;
+  let monthsElapsed = 0;
+  const rows = [];
+  milestoneYears.forEach(yrsOut=>{
+    const targetMonths = yrsOut*12;
+    while(monthsElapsed < targetMonths){
+      bal = bal*(1+monthlyRate) + monthly;
+      monthsElapsed++;
+    }
+    rows.push({yrsOut, year: nowYear+yrsOut, balance: Math.round(bal)});
+  });
+
+  const table = document.getElementById('milestoneTable');
+  table.innerHTML = '<tr><th>Years from now</th><th>Year</th><th class="num">Projected balance</th></tr>' +
+    rows.map(r=>`<tr><td>${r.yrsOut}</td><td>${r.year}</td><td class="num">$${r.balance.toLocaleString()}</td></tr>`).join('');
+}
+simIds.forEach(id=>document.getElementById(id).addEventListener('input', renderSim));
+
+/* ---------- TCO: MODEL Y VS THE ALTERNATIVES (dynamic by years owned) ---------- */
+const TCO_CATS = [
+  {key:'purchase',  label:'Purchase price',        color:'#2a78d6'},
+  {key:'tax',       label:'Sales/use tax',          color:'#eb6834'},
+  {key:'energy',    label:'Energy/fuel',            color:'#1baf7a'},
+  {key:'tires',     label:'Tires',                  color:'#eda100'},
+  {key:'maint',     label:'Maintenance & extras',   color:'#e87ba4'},
+  {key:'reg',       label:'Registration/fees',      color:'#6250d6'},
+  {key:'insurance', label:'Insurance',               color:'#e34948'},
+  {key:'fsd',       label:'FSD (self-driving)',     color:'#00adb5'},
+  {key:'resale',    label:'Resale credit',          color:'#008300'}
+];
+/* Each vehicle: one-time purchase + tax; a per-mile rate for the mileage-driven
+   categories (fuel, tires, maintenance -- each vehicle's originally researched
+   8-year total at a 15,000 mi/yr baseline, divided by that baseline's total
+   lifetime miles); a per-year rate for the calendar-driven categories
+   (registration, insurance); and a resale decay constant k such that fraction
+   retained = exp(-k*age). k is solved so the age curve passes through that
+   vehicle's own originally researched resale point -- a smooth interpolation/
+   extrapolation model, not a year-by-year CarEdge lookup at every setting. */
+const TCO_BASELINE_MI_YR = 15000;
+const TCO = {
+  teslaLR: {
+    label:'Model Y Long Range (2023)', short:'Model Y LR', fuel:'ev',
+    purchase:33995, tax:3586,
+    perMile:{energy:360/TCO_BASELINE_MI_YR, tires:500/TCO_BASELINE_MI_YR, maint:325.5/TCO_BASELINE_MI_YR},
+    perYear:{reg:560, insurance:2450},
+    k:0.1042
+  },
+  teslaPerformance: {
+    label:'Model Y Performance (2023)', short:'Model Y Performance', fuel:'ev',
+    purchase:33850, tax:3571,
+    perMile:{energy:384/TCO_BASELINE_MI_YR, tires:648/TCO_BASELINE_MI_YR, maint:325.5/TCO_BASELINE_MI_YR},
+    perYear:{reg:560, insurance:2600},
+    k:0.1042
+  },
+  highlander: {
+    label:'Toyota Highlander Hybrid AWD (2023)', short:'Highlander Hybrid', fuel:'gas',
+    purchase:35749, tax:3771,
+    perMile:{energy:1759.875/TCO_BASELINE_MI_YR, tires:244.375/TCO_BASELINE_MI_YR, maint:553.75/TCO_BASELINE_MI_YR},
+    perYear:{reg:235, insurance:2000},
+    k:0.0784
+  },
+  grandcherokee: {
+    label:'2021 Jeep Grand Cherokee Summit V8', short:'Grand Cherokee Summit V8', fuel:'gas',
+    purchase:31500, tax:3323,
+    perMile:{energy:3745.5/TCO_BASELINE_MI_YR, tires:337.5/TCO_BASELINE_MI_YR, maint:982.5/TCO_BASELINE_MI_YR},
+    perYear:{reg:160, insurance:2000},
+    k:0.0635
+  }
+};
+/* Location toggle: Sammamish (King County/Sound Transit) is the baseline every
+   other figure in this dashboard was researched against. Yakima figures are a
+   second, separately-sourced set of regional adjustments layered on top of each
+   vehicle's Sammamish-baseline per-mile/per-year rates -- not an independent
+   from-scratch build of each cost line. See the assumptions list below the
+   breakdown table for the specific sourcing and caveats on each adjustment. */
+const TCO_LOCATIONS = {
+  sammamish: {
+    label:'Sammamish', full:'Sammamish, WA 98029',
+    taxRate:0.1055,
+    gasMultiplier:1.0,
+    regMode:'mvet',
+    insuranceDelta:0,
+    maintMultiplier:1.0
+  },
+  yakima: {
+    label:'Yakima', full:'Yakima, WA',
+    taxRate:0.085,
+    // Gas: Yakima runs roughly 30-50 cents/gal cheaper than the Seattle metro per
+    // AAA's WA state gas price averages (https://gasprices.aaa.com/?state=WA) --
+    // applied here as the midpoint (~$0.40) off Sammamish's $4.60 baseline, same
+    // 5%/yr decline. (An earlier version of this comment cited a Cantwell/FTC
+    // press release about Spokane; that release is from 2006, is Spokane-specific
+    // -- a separate PADD IV supply region from Yakima -- and actually found
+    // Spokane prices running HIGHER than Seattle's, so it did not support this
+    // number and has been replaced with the AAA comparison above.)
+    gasMultiplier:4.20/4.60,
+    // Registration: Yakima is outside the Sound Transit taxing district, so none
+    // of Sammamish's per-vehicle Motor Vehicle Excise Tax applies -- just a flat
+    // state fee, cited at $60/yr regardless of the vehicle's value or age.
+    regMode:'flat60',
+    // Insurance: Yakima averages roughly $376/yr less than Seattle/King County
+    // full-coverage rates (KIRO7/Way.com's Yakima rate roundup vs. MoneyGeek's
+    // Seattle rate page, see links in the rendered assumptions list), attributed
+    // to lower traffic density and lower vehicle-theft rates. Applied as a flat
+    // per-vehicle delta.
+    insuranceDelta:-376,
+    // Maintenance/labor: qualitatively, Eastern WA shop labor rates run well below
+    // the Seattle-metro-heavy WA average ($30.03/hr), but no Yakima-specific dollar
+    // figure was found. This 10% discount is a conservative, clearly-estimated
+    // placeholder, not a sourced figure like the others on this list.
+    maintMultiplier:0.90
+  }
+};
+/* Electricity rates by location and charging window, $/kWh. Each vehicle's
+   perMile.energy for the two Tesla trims was originally researched against
+   Sammamish off-peak charging (PSE Schedule 327 Super Off-Peak), so that's the
+   baseline every other rate is scaled against.
+   Sammamish -- PSE Schedule 327 (Residential TOU with Super Off-Peak), rates
+   beginning 1/29/2026: On-Peak is a simple annual blend of the filed winter
+   ($0.503575, Oct-Mar, weekday 7-10am & 5-8pm) and summer ($0.271839, Apr-Sep,
+   same weekday hours) peak rates; Off-Peak uses the year-round Super Off-Peak
+   rate (11pm-7am daily), $0.075542, since that's the overnight window this
+   dashboard has always modeled EV charging against.
+   Source: https://www.pse.com/-/media/Project/PSE/Portal/Rate-documents/Electric/elec_sch_327.pdf
+   Yakima -- Pacific Power Schedule 19 (Optional Residential TOU Pilot),
+   effective 9/1/2026: On-Peak $0.17371 and Off-Peak $0.12066, both flat
+   year-round Combined Effective Rates (only the clock defining which hours
+   count as on-peak shifts by season, not the price itself). Confirmed against
+   the WA Price Summary's "Combined Effective Rate" column, which layers riders
+   91/92/93/94/191/97/99 on top of the base tariff's 13.683c/8.378c -- the base
+   tariff sheet alone (elec_sch equivalent, WN U-76 Sheet 19.1) is NOT what
+   customers actually pay and should not be cited alone.
+   Source: https://www.pacificpower.net/content/dam/pcorp/documents/en/pacificpower/rates-regulation/washington/WA_Price_Summary.pdf */
+const ELECTRICITY_RATES = {
+  sammamish: {offpeak:0.075542, onpeak:0.387707},
+  yakima:    {offpeak:0.12066,  onpeak:0.17371}
+};
+const EV_BASELINE_RATE = ELECTRICITY_RATES.sammamish.offpeak;
+/* FSD (Full Self-Driving): Tesla ended one-time FSD purchases on 2/14/2026;
+   for most trims (Model Y included) it is subscription-only now, $99/mo. The
+   $8,000 one-time figure is the legacy purchase price from before that change,
+   kept here as a modeling option (e.g., comparing against a used Tesla that
+   already carries a transferred one-time FSD purchase), not a currently
+   purchasable option. Neither applies to the two gas vehicles. */
+const FSD_MONTHLY_RATE = 99;
+const FSD_ONETIME_PRICE = 8000;
+function tcoCompute(v, years, milesPerYear, locationKey, chargingWindow, fsdMode){
+  const loc = TCO_LOCATIONS[locationKey] || TCO_LOCATIONS.sammamish;
+  const cw = chargingWindow === 'onpeak' ? 'onpeak' : 'offpeak';
+  const mi = milesPerYear==null ? TCO_BASELINE_MI_YR : milesPerYear;
+  const totalMiles = mi*years;
+  const energyMultiplier = v.fuel === 'ev'
+    ? ELECTRICITY_RATES[locationKey||'sammamish'][cw] / EV_BASELINE_RATE
+    : loc.gasMultiplier;
+  const energy = v.perMile.energy*totalMiles*energyMultiplier;
+  const tires = v.perMile.tires*totalMiles;
+  const maint = v.perMile.maint*totalMiles*loc.maintMultiplier;
+  const reg = (loc.regMode === 'flat60' ? 60 : v.perYear.reg) * years;
+  const insurance = Math.max(0, v.perYear.insurance + loc.insuranceDelta) * years;
+  const tax = Math.round(v.purchase * loc.taxRate);
+  const fsd = v.fuel === 'ev'
+    ? (fsdMode === 'monthly' ? FSD_MONTHLY_RATE*12*years : fsdMode === 'onetime' ? FSD_ONETIME_PRICE : 0)
+    : 0;
+  const gross = v.purchase + tax + energy + tires + maint + reg + insurance + fsd;
+  // Resale keeps its age-based curve as the primary driver, plus a modest heuristic
+  // adjustment for mileage that deviates from the 15,000 mi/yr baseline the curve
+  // was calibrated on: roughly +/-15% for every 100% you're above or below it.
+  // Resale itself is not adjusted by location or FSD -- not modeled at that granularity.
+  const milesFactor = mi/TCO_BASELINE_MI_YR;
+  const mileageAdj = Math.max(0.6, Math.min(1.2, 1 - 0.15*(milesFactor-1)));
+  const resale = -Math.round(v.purchase*Math.exp(-v.k*years)*mileageAdj);
+  const net = gross + resale;
+  return {label:v.label, short:v.short, purchase:v.purchase, tax, energy, tires, maint, reg, insurance, fsd, gross, resale, net};
+}
+function renderComparisonInsight(altKey, years, milesPerYear, teslaLRc, teslaPerfC, altC){
+  const el = document.getElementById('tcoComparisonInsight');
+  const yrs = years===1 ? '1 year' : years+' years';
+  const milesTxt = milesPerYear.toLocaleString();
+  if(altKey === 'highlander'){
+    const cols = [teslaLRc, teslaPerfC, altC];
+    const totals = TCO_CATS.filter(c=>c.key!=='resale').map(cat=>({label:cat.label, max:Math.max(...cols.map(v=>v[cat.key]))}));
+    const biggest = totals.reduce((a,b)=> b.max>a.max ? b : a);
+    const avgTeslaEnergy = (teslaLRc.energy+teslaPerfC.energy)/2;
+    const fuelGap = Math.round(altC.energy - avgTeslaEnergy);
+    const tireGap = Math.round(teslaPerfC.tires - teslaLRc.tires);
+    el.innerHTML = `<strong>${biggest.label} is the single largest line item across all three vehicles.</strong> Fuel is where the Highlander loses the most ground, about $${Math.abs(fuelGap).toLocaleString()} ${fuelGap>=0?'more':'less'} than either Tesla trim over ${yrs}. Tires are where Performance loses ground back to Long Range, about $${Math.abs(tireGap).toLocaleString()} more from its non-stock square-20 setup.`;
+  } else if(altKey === 'grandcherokee'){
+    const delta1 = Math.round(altC.net - teslaLRc.net);
+    const delta2 = Math.round(altC.net - teslaPerfC.net);
+    const lo = Math.min(delta1,delta2), hi = Math.max(delta1,delta2);
+    const fuelTotal = Math.round(altC.energy);
+    const purchaseClause = fuelTotal > altC.purchase ? ", more than the Jeep's own purchase price" : "";
+    el.innerHTML = `<strong>The Grand Cherokee costs $${Math.abs(lo).toLocaleString()} to $${Math.abs(hi).toLocaleString()} ${lo>=0?'more':'less'} than either Tesla trim over ${yrs}.</strong> That is a much starker gap than the Highlander comparison, driven almost entirely by fuel: at ${milesTxt} miles a year, the V8's real-world 15.5 mpg works out to roughly $${fuelTotal.toLocaleString()} in gas alone${purchaseClause}.`;
+  }
+}
+function renderResaleCaveat(altKey, years){
+  const el = document.getElementById('tcoResaleCaveat');
+  const ageToday = 5;
+  const totalAge = ageToday + years;
+  if(altKey !== 'grandcherokee' || totalAge <= 12){ el.style.display = 'none'; return; }
+  const yearsPast = totalAge - 12;
+  el.style.display = 'block';
+  el.innerHTML = `<strong>Least certain number on this chart:</strong> the 2021 Summit V8 is already about ${ageToday} years old today; holding it ${years} more year${years===1?'':'s'} pushes it to age ${totalAge}, ${yearsPast} year${yearsPast===1?'':'s'} past <a href="https://caredge.com/jeep/grand-cherokee/depreciation" target="_blank" rel="noopener">CarEdge's own 12-year reliable-data ceiling</a>. Resale beyond that point is a smooth-curve extrapolation calibrated to the vehicle's own known long-term value, not a direct CarEdge data point at every age. Real risk skews further downward given the WK2 Summit's known post-warranty air-suspension and electronics repair reputation, which isn't priced into maintenance at all.`;
+}
+const TCO_ALL_KEYS = ['teslaLR','teslaPerformance','highlander','grandcherokee'];
+const TCO_CHART_COLORS = {teslaLR:'#C6303A', teslaPerformance:'#E87BA4', highlander:'#80868D', grandcherokee:'#EDA100'};
+
+/* Shows all four vehicles at once, independent of the dropdown selections above --
+   click any legend entry to hide/show that vehicle's line (Chart.js's default
+   legend behavior), so any pair or subset can be isolated. */
+function renderBreakEven(milesPerYear, locationKey, chargingWindow, fsdMode){
+  const maxYears = 15;
+  const yearsArr = Array.from({length:maxYears}, (_,i)=>i+1);
+  const nets = {};
+  TCO_ALL_KEYS.forEach(key=>{ nets[key] = yearsArr.map(y=>tcoCompute(TCO[key], y, milesPerYear, locationKey, chargingWindow, fsdMode).net); });
+
+  destroyChart('breakeven');
+  charts.breakeven = new Chart(document.getElementById('tcoBreakEvenChart'), {
+    type:'line',
+    data:{labels:yearsArr, datasets: TCO_ALL_KEYS.map(key=>({
+      label: TCO[key].short,
+      data: nets[key],
+      borderColor: TCO_CHART_COLORS[key],
+      pointRadius:0, borderWidth:2, tension:0.1
+    }))},
+    options:{responsive:true,
+      plugins:{
+        legend:{labels:{color:'#EDEAE4', font:chartFont}},
+        title:{display:true, text:'Cumulative net cost by years owned (click a legend item to hide it)', color:'#EDEAE4', font:{family:"'Zilla Slab', serif", size:13}}
+      },
+      scales:{
+        x:{grid:{color:gridColor}, title:{display:true, text:'Years owned', color:'#9A9793'}},
+        y:{grid:{color:gridColor}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}}
+      }
+    }
+  });
+
+  // Track which of the four is cheapest at each year, and report each handoff.
+  let currentCheapest = null;
+  const transitions = [];
+  yearsArr.forEach((yr,i)=>{
+    let cheapestKey = TCO_ALL_KEYS[0];
+    TCO_ALL_KEYS.forEach(key=>{ if(nets[key][i] < nets[cheapestKey][i]) cheapestKey = key; });
+    if(cheapestKey !== currentCheapest){
+      transitions.push({year:yr, key:cheapestKey});
+      currentCheapest = cheapestKey;
+    }
+  });
+
+  const el = document.getElementById('tcoBreakEvenInsight');
+  if(transitions.length <= 1){
+    el.className = 'insight good';
+    el.innerHTML = `<strong>${TCO[transitions[0].key].short} stays the cheapest of all four across the full ${maxYears}-year range shown.</strong> No crossover within a realistic holding period at today's assumptions. Toggle vehicles off in the legend above to isolate any pair.`;
+  } else {
+    el.className = 'insight warn';
+    const parts = transitions.map((t,i)=> i===0
+      ? `<strong>${TCO[t.key].short} starts out cheapest</strong>`
+      : `${TCO[t.key].short} takes over as cheapest around year ${t.year}`
+    );
+    el.innerHTML = parts.join(', then ') + '. Toggle vehicles off in the legend above to isolate any pair.';
+  }
+}
+function renderTco(){
+  const altKey = document.getElementById('tcoAltSelect').value;
+  const trimKey = document.getElementById('tcoTrimSelect').value === 'lr' ? 'teslaLR' : 'teslaPerformance';
+  const years = parseInt(document.getElementById('tcoYearsSlider').value);
+  const milesPerYear = parseInt(document.getElementById('tcoMilesSlider').value);
+  const locationKey = document.getElementById('tcoLocationSelect').value;
+  const chargingWindow = document.getElementById('tcoChargingSelect').value;
+  const fsdMode = document.getElementById('tcoFsdSelect').value;
+  const loc = TCO_LOCATIONS[locationKey];
+  const activeRate = ELECTRICITY_RATES[locationKey][chargingWindow];
+  document.getElementById('tcoYearsVal').textContent = years + (years===1?' year':' years');
+  document.getElementById('tcoHoldYears').textContent = years;
+  document.getElementById('tcoBreakdownYears').textContent = '(' + years + (years===1?' year':' years') + ')';
+  document.getElementById('tcoMilesVal').textContent = milesPerYear.toLocaleString();
+  document.getElementById('tcoMilesLabel').textContent = milesPerYear.toLocaleString();
+  document.getElementById('tcoLocationLabel').textContent = loc.label;
+  document.getElementById('tcoChargingRate').textContent = (activeRate*100).toFixed(1)+'¢/kWh';
+  document.getElementById('tcoFsdCost').textContent = fsdMode === 'monthly' ? '$'+FSD_MONTHLY_RATE+'/mo' : fsdMode === 'onetime' ? '$'+FSD_ONETIME_PRICE.toLocaleString()+' once' : 'no cost';
+
+  const teslaLRc = tcoCompute(TCO.teslaLR, years, milesPerYear, locationKey, chargingWindow, fsdMode);
+  const teslaPerfC = tcoCompute(TCO.teslaPerformance, years, milesPerYear, locationKey, chargingWindow, fsdMode);
+  const altC = tcoCompute(TCO[altKey], years, milesPerYear, locationKey, chargingWindow, fsdMode);
+  const primaryC = trimKey==='teslaLR' ? teslaLRc : teslaPerfC;
+
+  const cols = [teslaLRc, teslaPerfC, altC];
+  const barLabels = cols.map(v => [v.label, `Net total: $${Math.round(v.net).toLocaleString()}`]);
+  const colKeys = ['teslaLR','teslaPerformance', altKey];
+  const datasets = TCO_CATS.map(cat=>({
+    label: cat.label,
+    data: cols.map(v=>v[cat.key]),
+    backgroundColor: cat.color
+  }));
+
+  destroyChart('tco');
+  charts.tco = new Chart(document.getElementById('tcoChart'), {
+    type:'bar',
+    data:{labels:barLabels, datasets},
+    options:{
+      indexAxis:'y', responsive:true,
+      plugins:{
+        legend:{labels:{color:'#EDEAE4', font:chartFont}},
+        title:{display:true, text:`${years}-year total cost of ownership, ${milesPerYear.toLocaleString()} mi/yr, ${loc.full}`, color:'#EDEAE4', font:{family:"'Zilla Slab', serif", size:13}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: $${Math.abs(ctx.parsed.x).toLocaleString()}`}}
+      },
+      scales:{
+        x:{stacked:true, grid:{color:gridColor}, ticks:{callback:v=>'$'+v.toLocaleString()}},
+        y:{stacked:true, grid:{display:false}}
+      }
+    }
+  });
+
+  const delta = altC.net - primaryC.net;
+  const winner = delta >= 0 ? primaryC : altC;
+  const loser = delta >= 0 ? altC : primaryC;
+  const amt = Math.round(Math.abs(delta));
+  const tied = amt < 150;
+  const yrsShort = years===1 ? '1 yr' : years+' yrs';
+  const yrsLong = years===1 ? '1 year' : years+' years';
+
+  const statTco = document.getElementById('statTco');
+  const statTcoLabel = document.getElementById('statTcoLabel');
+  if(statTco){
+    statTco.textContent = '$'+amt.toLocaleString();
+    statTcoLabel.textContent = tied
+      ? `${primaryC.short} and ${altC.short} are basically tied over ${yrsShort}`
+      : `${winner.short}'s net ${yrsShort} edge over ${loser.short}`;
+  }
+
+  document.getElementById('tcoVerdictOut').textContent = '$'+amt.toLocaleString();
+  document.getElementById('tcoVerdictTxt').textContent = tied
+    ? `${primaryC.short} and ${altC.short} come out within $${amt.toLocaleString()} of each other over ${yrsLong}, effectively a tie.`
+    : `${winner.short} costs $${amt.toLocaleString()} less than ${loser.short} over ${yrsLong}.`;
+
+  renderComparisonInsight(altKey, years, milesPerYear, teslaLRc, teslaPerfC, altC);
+  renderResaleCaveat(altKey, years);
+
+  const hl = k => k===trimKey ? ' style="color:var(--brass);"' : '';
+  let html = '<tr><th>Category</th>' + cols.map((v,i)=>`<th class="num"${hl(colKeys[i])}>${v.label}</th>`).join('') + '</tr>';
+  TCO_CATS.filter(c=>c.key!=='resale').forEach(cat=>{
+    html += '<tr><td>'+cat.label+'</td>' + cols.map((v,i)=>`<td class="num"${hl(colKeys[i])}>$${Math.round(v[cat.key]).toLocaleString()}</td>`).join('') + '</tr>';
+  });
+  html += '<tr style="border-top:2px solid var(--line);"><td><strong>Gross total</strong></td>' +
+    cols.map((v,i)=>`<td class="num"${hl(colKeys[i])}><strong>$${Math.round(v.gross).toLocaleString()}</strong></td>`).join('') + '</tr>';
+  html += '<tr><td>Resale value</td>' +
+    cols.map((v,i)=>`<td class="num"${hl(colKeys[i])}>-$${Math.abs(Math.round(v.resale)).toLocaleString()}</td>`).join('') + '</tr>';
+  html += '<tr><td><strong>Net total</strong></td>' +
+    cols.map((v,i)=>`<td class="num"${hl(colKeys[i])}><strong>$${Math.round(v.net).toLocaleString()}</strong></td>`).join('') + '</tr>';
+  const totalMilesForCpm = years*milesPerYear;
+  html += '<tr style="border-top:2px solid var(--line);"><td><strong>Cost per mile</strong></td>' +
+    cols.map((v,i)=>`<td class="num"${hl(colKeys[i])}><strong>$${(v.net/totalMilesForCpm).toFixed(2)}/mi</strong></td>`).join('') + '</tr>';
+  document.getElementById('tcoBreakdownTable').innerHTML = html;
+
+  renderBreakEven(milesPerYear, locationKey, chargingWindow, fsdMode);
+  renderAssumptions(locationKey, chargingWindow, fsdMode);
+}
+function renderAssumptions(locationKey, chargingWindow, fsdMode){
+  const loc = TCO_LOCATIONS[locationKey];
+  const rates = ELECTRICITY_RATES[locationKey];
+  const el = document.getElementById('tcoAssumptionsList');
+  const activeLabel = chargingWindow === 'onpeak' ? 'on-peak' : 'off-peak';
+  const fmtRate = r => (r*100).toFixed(1)+'¢/kWh';
+  const fsdLine = fsdMode === 'monthly'
+    ? `currently set to <strong>monthly</strong>: adds Tesla's $${FSD_MONTHLY_RATE}/mo FSD subscription for the full holding period`
+    : fsdMode === 'onetime'
+    ? `currently set to <strong>one-time</strong>: adds a flat $${FSD_ONETIME_PRICE.toLocaleString()} to the purchase price`
+    : `currently set to <strong>none</strong>: no FSD cost added`;
+  const fsdBullet = `<li><strong>FSD (self-driving), Tesla trims only:</strong> ${fsdLine}. <a href="https://www.tesla.com/support/full-self-driving-subscriptions" target="_blank" rel="noopener">Tesla moved to subscription-only FSD on 2/14/2026 at $${FSD_MONTHLY_RATE}/mo</a>; the $${FSD_ONETIME_PRICE.toLocaleString()} one-time figure is the legacy purchase price from before that change, kept as a modeling option (e.g. a used Tesla with a transferred one-time purchase already on it), not a currently purchasable option. Not applicable to the Highlander or Grand Cherokee.</li>`;
+
+  if(locationKey === 'yakima'){
+    el.innerHTML = `
+      <li><strong>Location-dependent:</strong> Yakima, WA, <a href="https://webgis.dor.wa.gov/taxratelookup/salestax.aspx" target="_blank" rel="noopener">8.5% combined sales/use tax</a> (vs. Sammamish's 10.55%), outside the Sound Transit RTA district.</li>
+      <li><strong>Location-dependent:</strong> gas assumed about $4.20/gal declining 5%/yr, roughly 30-50&cent;/gal cheaper than the Seattle metro per <a href="https://gasprices.aaa.com/?state=WA" target="_blank" rel="noopener">AAA's Washington gas price averages</a> (Sammamish assumes $4.60/gal).</li>
+      <li><strong>Location- and charging-window-dependent:</strong> electricity via <a href="https://www.pacificpower.net/content/dam/pcorp/documents/en/pacificpower/rates-regulation/washington/WA_Price_Summary.pdf" target="_blank" rel="noopener">Pacific Power's Schedule 19 Optional Residential TOU Pilot</a>, effective 9/1/2026: off-peak ${fmtRate(rates.offpeak)}, on-peak ${fmtRate(rates.onpeak)} (currently using <strong>${activeLabel}</strong>). On-peak hours run 2-10pm daily (Jun-Sep) or 6-8am &amp; 4-10pm daily (Oct-May); all other hours are off-peak. Only the two Tesla trims are affected; the Highlander and Grand Cherokee run on gas.</li>
+      <li><strong>Location-dependent:</strong> registration is a <a href="https://dol.wa.gov/vehicles-and-boats/vehicles/vehicle-registration/calculate-vehicle-tab-fees" target="_blank" rel="noopener">flat $60/yr for every vehicle</a>, since Yakima falls outside the Sound Transit taxing district and pays no Motor Vehicle Excise Tax (Sammamish's per-vehicle reg values above are MVET-inflated for newer, pricier vehicles).</li>
+      <li><strong>Location-dependent:</strong> insurance is reduced $376/yr per vehicle from the Sammamish baseline, per <a href="https://www.kiro7.com/news/car-insurance-rates-yakima-october-2025/6Y46RVWFJJKTHM6FNUQXMYGXPY/" target="_blank" rel="noopener">Yakima</a> vs. <a href="https://www.moneygeek.com/insurance/auto/best-cheap-car-insurance-seattle-wa/" target="_blank" rel="noopener">Seattle/King County</a> full-coverage averages, reflecting Yakima's lower traffic density and vehicle-theft rates.</li>
+      <li><strong>Location-dependent, least certain of these:</strong> maintenance/labor costs are estimated 10% lower than Sammamish. Eastern WA shop labor is qualitatively known to run below the <a href="https://www.tekmetric.com/post/average-auto-repair-labor-rates-by-state" target="_blank" rel="noopener">Seattle-metro-heavy WA average</a>, but no Yakima-specific rate was found, so this is a conservative placeholder, not a sourced figure like the others above.</li>
+      <li>Trade-in sales tax credit and opportunity cost of capital not modeled.</li>
+      ${fsdBullet}
+      <li>Extended warranty is a qualitative caveat only, not priced.</li>
+      <li>WA's proposed <a href="https://afdc.energy.gov/laws/9974" target="_blank" rel="noopener">EV fee increase</a> and <a href="https://wstc.wa.gov/studies-surveys/road-usage-charge/" target="_blank" rel="noopener">road-usage-charge pilot</a> are watch items only, not modeled.</li>
+      <li>Fuel/energy, tires, and maintenance were each vehicle's original researched total at a 15,000 mi/yr, 8-year, Sammamish off-peak baseline, converted to a per-mile rate and scaled by both sliders, then adjusted by the location and charging-window rates above. Registration and insurance are per-year rates from that same baseline, scaled by years owned and adjusted by location.</li>
+      <li>Resale gets a modest mileage adjustment on top of the age-based curve: roughly &plusmn;15% for every 100% you're above or below the 15,000 mi/yr baseline, capped so it can't run away in either direction. It's a simplified heuristic, not a <a href="https://caredge.com/tesla/model-y/depreciation" target="_blank" rel="noopener">CarEdge</a> mileage-adjustment table, and it is not adjusted by location.</li>
+      <li>Resale is modeled as smooth exponential decay calibrated to each vehicle's originally researched long-term resale point (<a href="https://caredge.com/tesla/model-y/depreciation" target="_blank" rel="noopener">Model Y</a>, <a href="https://caredge.com/toyota/highlander/depreciation" target="_blank" rel="noopener">Highlander</a>, <a href="https://caredge.com/jeep/grand-cherokee/depreciation" target="_blank" rel="noopener">Grand Cherokee</a>), not a year-by-year CarEdge lookup at every setting.</li>
+    `;
+  } else {
+    el.innerHTML = `
+      <li><strong>Location-dependent:</strong> Sammamish, WA 98029, <a href="https://webgis.dor.wa.gov/taxratelookup/salestax.aspx" target="_blank" rel="noopener">10.55% combined sales/use tax</a>.</li>
+      <li><strong>Location-dependent:</strong> gas at <a href="https://www.eia.gov/dnav/pet/pet_pri_gnd_dcus_Y48SE_w.htm" target="_blank" rel="noopener">$4.60/gal</a> declining 5%/yr, with <a href="https://www.pse.com/en/pages/rates/pending-utc-filings/2026-general-rate-case" target="_blank" rel="noopener">filed rate increases through 2029</a> then 4%/yr assumed after.</li>
+      <li><strong>Location- and charging-window-dependent:</strong> electricity via <a href="https://www.pse.com/-/media/Project/PSE/Portal/Rate-documents/Electric/elec_sch_327.pdf" target="_blank" rel="noopener">PSE Schedule 327 (Residential TOU with Super Off-Peak)</a>, rates beginning 1/29/2026: off-peak (modeled as the year-round Super Off-Peak window, 11pm-7am daily) ${fmtRate(rates.offpeak)}; on-peak ${fmtRate(rates.onpeak)}, a simple annual blend of the filed winter ($0.503575, Oct-Mar) and summer ($0.271839, Apr-Sep) weekday peak rates (7-10am &amp; 5-8pm). Currently using <strong>${activeLabel}</strong>. Only the two Tesla trims are affected; the Highlander and Grand Cherokee run on gas.</li>
+      <li><strong>Location-dependent:</strong> registration includes <a href="https://dol.wa.gov/vehicles-and-boats/vehicles/taxes-and-fees/regional-transit-authority-rta-tax" target="_blank" rel="noopener">Sound Transit's Motor Vehicle Excise Tax</a>, so per-vehicle values vary by original MSRP: highest for the newest, priciest vehicles (the Tesla trims), lowest for the oldest (the Grand Cherokee).</li>
+      <li>Trade-in sales tax credit and opportunity cost of capital not modeled.</li>
+      ${fsdBullet}
+      <li>Extended warranty is a qualitative caveat only, not priced.</li>
+      <li>WA's proposed <a href="https://afdc.energy.gov/laws/9974" target="_blank" rel="noopener">EV fee increase</a> and <a href="https://wstc.wa.gov/studies-surveys/road-usage-charge/" target="_blank" rel="noopener">road-usage-charge pilot</a> are watch items only, not modeled.</li>
+      <li>Fuel, tires, and maintenance were each vehicle's original researched total at a 15,000 mi/yr, 8-year, off-peak-charging baseline, converted to a per-mile rate and scaled by both sliders. Registration and insurance are per-year rates from that same baseline, scaled only by years owned.</li>
+      <li>Resale gets a modest mileage adjustment on top of the age-based curve: roughly &plusmn;15% for every 100% you're above or below the 15,000 mi/yr baseline, capped so it can't run away in either direction. It's a simplified heuristic, not a <a href="https://caredge.com/tesla/model-y/depreciation" target="_blank" rel="noopener">CarEdge</a> mileage-adjustment table.</li>
+      <li>Resale is modeled as smooth exponential decay calibrated to each vehicle's originally researched long-term resale point (<a href="https://caredge.com/tesla/model-y/depreciation" target="_blank" rel="noopener">Model Y</a>, <a href="https://caredge.com/toyota/highlander/depreciation" target="_blank" rel="noopener">Highlander</a>, <a href="https://caredge.com/jeep/grand-cherokee/depreciation" target="_blank" rel="noopener">Grand Cherokee</a>), not a year-by-year CarEdge lookup at every setting.</li>
+    `;
+  }
+}
+document.getElementById('tcoAltSelect').addEventListener('change', renderTco);
+document.getElementById('tcoTrimSelect').addEventListener('change', renderTco);
+document.getElementById('tcoYearsSlider').addEventListener('input', renderTco);
+document.getElementById('tcoMilesSlider').addEventListener('input', renderTco);
+document.getElementById('tcoLocationSelect').addEventListener('change', renderTco);
+document.getElementById('tcoChargingSelect').addEventListener('change', renderTco);
+document.getElementById('tcoFsdSelect').addEventListener('change', renderTco);
+
+/* ---------- ORCHESTRATOR ---------- */
+function renderAll(){
+  renderHeaderBits();
+  renderStatBar();
+  renderDrivingSplit();
+  renderMilesChart();
+  renderGasChart();
+  renderSeasonChart();
+  const mileageWindow = renderUpcomingMaintenance();
+  renderCumMaintChart();
+  renderKeep();
+  renderTimingCompare(mileageWindow);
+  renderSim();
+}
+renderAll();
+renderTco();
+
+/* ---------- FILE LOADER WIRING ---------- */
+const milesFileInput = document.getElementById('milesFileInput');
+document.getElementById('topnavLoadBtn').addEventListener('click', ()=>milesFileInput.click());
+document.getElementById('maintLoadBtn').addEventListener('click', ()=>milesFileInput.click());
+milesFileInput.addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('loaderStatus');
+  statusEl.className = 'loader-status';
+  statusEl.textContent = 'Reading '+file.name+'…';
+  try{
+    const newData = await parseMilesWorkbook(file);
+    CURRENT_DATA = newData;
+    persistData(CURRENT_DATA);
+    D = computeDerived(CURRENT_DATA);
+    renderAll();
+    statusEl.className = 'loader-status ok';
+    statusEl.textContent = 'Loaded '+file.name+', the dashboard now runs through '+CURRENT_DATA.monthLabels[CURRENT_DATA.monthLabels.length-1]+'.';
+  }catch(err){
+    console.error('Failed to load workbook', err);
+    statusEl.className = 'loader-status err';
+    statusEl.textContent = err.message || 'Could not read that file; make sure it is the MILES.xlsx export with the usual tabs.';
+  }
+  milesFileInput.value = '';
+});
+</script>
+
+</body>
+</html>
